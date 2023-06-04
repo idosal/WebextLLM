@@ -5,14 +5,14 @@ import { modelAPICallers } from "~core/llm"
 import { AuthType, type Config, configManager } from "./managers/config"
 import type { Transaction } from "./managers/transaction"
 import { type Result, unknownErr } from "./utils/result-monad"
-import { err, ok } from "./utils/result-monad"
+import { ok } from "./utils/result-monad"
 import { log } from "./utils/utils"
 
 export async function complete(
   txn: Transaction
 ): Promise<Result<string[], string>> {
   const config = await configManager.forModelWithDefault(txn.model)
-  const caller = configManager.getCaller(config)
+  const caller = await configManager.getCaller(config)
   const model = txn.model || configManager.getCurrentModel(config)
 
   try {
@@ -31,11 +31,11 @@ export async function complete(
   }
 }
 
-export function shouldStream(
+export async function shouldStream(
   config: Config,
   userPrefersStream = true
-): boolean {
-  const canStream = configManager.getCaller(config).config.isStreamable
+): Promise<boolean> {
+  const canStream = (await configManager.getCaller(config)).config.isStreamable
   return canStream && (userPrefersStream || config.auth === AuthType.External)
 }
 
@@ -44,18 +44,14 @@ export async function stream(
 ): Promise<AsyncGenerator<Result<string, string>>> {
   try {
     const config = await configManager.forModelWithDefault(txn.model)
-    const caller = configManager.getCaller(config)
+    const caller = await configManager.getCaller(config)
     const model = txn.model || configManager.getCurrentModel(config)
 
-    if (!shouldStream(config)) {
-      // TODO call complete() here
-      // https://github.com/alexanderatallah/window.ai/pull/50
+    if (!(await shouldStream(config))) {
       throw ErrorCode.InvalidRequest
     }
 
     if (txn.numOutputs && txn.numOutputs > 1) {
-      // TODO Can't stream multiple outputs
-      // https://github.com/alexanderatallah/window.ai/issues/52
       throw ErrorCode.InvalidRequest
     }
 

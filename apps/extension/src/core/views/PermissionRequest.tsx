@@ -31,8 +31,8 @@ export function PermissionRequest({
     // TODO figure out why hfull doesn't work
     <div className="flex flex-col h-[92%]">
       <div className="flex-auto flex flex-col overflow-y-auto overflow-x-hidden items-center justify-center">
-        <div className="flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-900">
-          <KeyIcon className="w-8 h-8 text-slate-500 dark:text-slate-400" />
+        <div className="flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-900">
+          <KeyIcon className="w-8 h-8 text-gray-500 dark:text-gray-400" />
         </div>
         <div className="mt-4 flex flex-col items-center w-full">
           <Text size="lg" strength="medium">
@@ -41,7 +41,7 @@ export function PermissionRequest({
           {transaction ? (
             <TransactionPermission transaction={transaction} />
           ) : (
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
               Error: {error}
             </p>
           )}
@@ -81,7 +81,7 @@ function TransactionPermission({ transaction }: { transaction: Transaction }) {
       <Text dimming="more" size="lg">
         {originManager.originDisplay(transaction.origin)}
       </Text>
-      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
         This app is requesting permission to access {config?.label}
         {requestedModel && !isKnownModel(requestedModel)
           ? ` (${requestedModel})`
@@ -94,6 +94,7 @@ function TransactionPermission({ transaction }: { transaction: Transaction }) {
       </Accordion>
       <Dropdown
         choices={["ask", "allow"] as const}
+        showArrows={true}
         onSelect={async (permission) =>
           setObject({
             ...transaction.origin,
@@ -101,8 +102,8 @@ function TransactionPermission({ transaction }: { transaction: Transaction }) {
           })
         }>
         {object?.permissions === "allow"
-          ? "Always allow this site"
-          : "Always ask for this site"}
+          ? "Always allow this site?"
+          : "Always ask permission for this site?"}
       </Dropdown>
     </div>
   )

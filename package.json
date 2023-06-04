@@ -11,8 +11,7 @@
     "lint": "cross-env FORCE_COLOR=1 turbo run lint",
     "test": "cross-env FORCE_COLOR=1 turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "package": "turbo run package",
-    "publish-packages": "cross-env FORCE_COLOR=1 turbo run build lint --filter=window.ai && changeset version --filter=window.ai && changeset publish --filter=window.ai"
+    "package": "turbo run package"
   },
   "engines": {
     "node": ">=14.0.0"

@@ -32,9 +32,9 @@ export function Text({
           ? "italic "
           : " ") +
         (dimming === "less"
-          ? "text-slate-500 dark:text-slate-400 "
+          ? "text-amber-500 dark:text-amber-400 "
           : dimming === "more"
-          ? "text-slate-400 dark:text-slate-300 "
+          ? "text-amber-400 dark:text-amber-300 "
           : " ") +
         (truncate ? "truncate " : "") +
         (lines === 1

@@ -22,7 +22,7 @@ export function Accordion({
     <div className={"flex flex-col " + (centered ? "items-center " : "")}>
       <button
         type="button"
-        className="flex items-center py-2 text-left text-slate-500 dark:text-slate-400 focus:outline-none"
+        className="flex items-center py-2 text-left text-amber-500 dark:text-amber-400 focus:outline-none"
         onClick={() => setIsOpen(!isOpen)}>
         {title}
         {isOpen ? (

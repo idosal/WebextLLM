@@ -62,7 +62,7 @@ class TransactionManager extends BaseManager<Transaction> {
 
     if (isNew) {
       const originData = txn.origin
-      const newOrigin = originManager.init(originData)
+      const newOrigin = await originManager.init(originData)
       const origin = await originManager.getOrInit(newOrigin.id, newOrigin)
       await Promise.all([
         originManager.save(origin),

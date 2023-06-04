@@ -5,30 +5,13 @@ import { Storage } from "@plasmohq/storage"
 
 import { PortName } from "~core/constants"
 import { Extension } from "~core/extension"
-import { local, modelAPICallers, openrouter } from "~core/llm"
+import { native } from "~core/llm"
 import { ModelID, isKnownModel } from "~public-interface"
 
 import { BaseManager } from "./base"
 
 export enum AuthType {
-  // Let another site handle all authentication
-  External = "external",
-  // Use an API key
-  APIKey = "key"
-}
-
-const APIKeyURL: Record<ModelID, string> = {
-  [ModelID.GPT3]: "https://platform.openai.com/account/api-keys",
-  [ModelID.GPT4]: "https://platform.openai.com/account/api-keys",
-  [ModelID.Together]: "https://api.together.xyz/",
-  [ModelID.Cohere]: "https://dashboard.cohere.ai/api-keys"
-}
-
-const defaultAPILabel: Record<ModelID, string> = {
-  [ModelID.GPT3]: "OpenAI: GPT-3.5",
-  [ModelID.GPT4]: "OpenAI: GPT-4",
-  [ModelID.Together]: "Together: GPT NeoXT 20B",
-  [ModelID.Cohere]: "Cohere: Xlarge"
+  None = "none"
 }
 
 const authIndexName = "byAuth"
@@ -41,8 +24,10 @@ export interface Config {
   baseUrl: string
   models: ModelID[]
 
+  modelCacheUrl?: string
   session?: { email?: string; expiresAt?: number }
   apiKey?: string
+  downloaded?: boolean
 }
 
 class ConfigManager extends BaseManager<Config> {
@@ -65,25 +50,19 @@ class ConfigManager extends BaseManager<Config> {
     this.modelHandlers.setNamespace(`configs-model-handlers-`)
   }
 
-  init(auth: AuthType, modelId?: ModelID): Config {
+  async init(auth: AuthType, modelId?: ModelID): Promise<Config> {
     const id = uuidv4()
-    const caller = this.getCallerForAuth(auth, modelId)
+    const caller = await this.getCallerForAuth(auth, modelId)
     const label = this.getLabelForAuth(auth, modelId)
     switch (auth) {
-      case AuthType.External:
-        return {
-          id,
-          auth,
-          label,
-          models: [ModelID.GPT3, ModelID.GPT4],
-          baseUrl: caller.config.defaultBaseUrl
-        }
-      case AuthType.APIKey:
+      case AuthType.None:
         return {
           id,
           auth,
           models: modelId ? [modelId] : [],
-          baseUrl: caller.config.defaultBaseUrl,
+          modelCacheUrl:
+            "https://huggingface.co/spaces/idosal/web-llm/resolve/main/wizardlm-vicuna-7b-q4f32_0/",
+          baseUrl: "",
           label
         }
     }
@@ -109,7 +88,7 @@ class ConfigManager extends BaseManager<Config> {
     if (configId) {
       const config = await this.get(configId)
       if (config) {
-        const defaults = this.init(config.auth, modelId)
+        const defaults = await this.init(config.auth, modelId)
         return {
           ...defaults,
           ...config
@@ -117,19 +96,19 @@ class ConfigManager extends BaseManager<Config> {
       }
       await this.modelHandlers.remove(modelId)
     }
-    // TODO include Token auth possibilities?
-    return this.init(AuthType.APIKey, modelId)
+
+    return this.init(AuthType.None, modelId)
   }
 
   isCredentialed(config: Config): boolean {
-    if (!config.baseUrl) {
-      return false
-    }
+    // if (!config.baseUrl) {
+    //   return false
+    // }
     switch (config.auth) {
-      case AuthType.External:
-        return !!config.session
-      case AuthType.APIKey:
-        return config.models.length ? !!config.apiKey : true
+      case AuthType.None:
+        return config?.downloaded || false
+      default:
+        return false
     }
   }
 
@@ -150,6 +129,7 @@ class ConfigManager extends BaseManager<Config> {
   async getDefault(): Promise<Config> {
     const id = (await this.defaultConfig.get("id")) as string | undefined
     if (id) {
+      // this.defaultConfig.removeAll()
       const config = await this.get(id)
       if (config) {
         return config
@@ -157,7 +137,7 @@ class ConfigManager extends BaseManager<Config> {
       await this.defaultConfig.remove("id")
     }
     // TODO switch to authtype external
-    return this.init(AuthType.APIKey, ModelID.GPT3)
+    return await this.init(AuthType.None)
   }
 
   // TODO: allow multiple custom models
@@ -169,14 +149,14 @@ class ConfigManager extends BaseManager<Config> {
       return this.forModel(model)
     }
     // TEMP: Handle unknown models using one custom model
-    const configs = await this.filter({
-      auth: AuthType.APIKey,
-      model: null
-    })
-    if (configs.length > 0) {
-      return configs[0]
-    }
-    return this.init(AuthType.APIKey)
+    // const configs = await this.filter({
+    //   auth: AuthType.APIKey,
+    //   model: null
+    // })
+    // if (configs.length > 0) {
+    //   return configs[0]
+    // }
+    return await this.init(AuthType.None)
   }
 
   // Filtering for `null` looks for configs that don't have any models
@@ -202,36 +182,36 @@ class ConfigManager extends BaseManager<Config> {
   async forAuthAndModel(auth: AuthType, modelId?: ModelID) {
     let forAuth: Config[]
     if (!modelId) {
-      forAuth =
-        auth === AuthType.APIKey
-          ? await this.filter({ auth, model: null }) // Local model is special case (no model ID)
-          : await this.filter({ auth })
+      forAuth = await this.filter({ auth })
     } else {
       forAuth = await this.filter({ auth, model: modelId })
     }
     return forAuth[0]
   }
 
-  getCallerForAuth(auth: AuthType, modelId?: ModelID) {
+  async getCallerForAuth(auth: AuthType, modelId?: ModelID) {
     switch (auth) {
-      case AuthType.External:
-        return openrouter
-      case AuthType.APIKey:
-        return modelId ? modelAPICallers[modelId] : local
+      case AuthType.None:
+        return await native
+      default:
+        return await native
     }
   }
 
   getLabelForAuth(auth: AuthType, modelId?: ModelID) {
     switch (auth) {
-      case AuthType.External:
-        return "OpenRouter"
-      case AuthType.APIKey:
-        return modelId ? defaultAPILabel[modelId] : "Local"
+      case AuthType.None:
+        return "Wizard-Vicuna-7B-Uncensored"
+      default:
+        return "Native"
     }
   }
 
-  getCaller(config: Config) {
-    return this.getCallerForAuth(config.auth, this.getCurrentModel(config))
+  async getCaller(config: Config) {
+    return await this.getCallerForAuth(
+      config.auth,
+      this.getCurrentModel(config)
+    )
   }
 
   getCurrentModel(config: Config): ModelID | undefined {
@@ -244,18 +224,8 @@ class ConfigManager extends BaseManager<Config> {
 
   getExternalConfigURL(config: Config) {
     switch (config.auth) {
-      case AuthType.External:
-        return (
-          (process.env.PLASMO_PUBLIC_OPENROUTER_URI ||
-            "https://openrouter.ai") + "/signin"
-        )
-      case AuthType.APIKey:
-        const model = this.getCurrentModel(config)
-        if (!model) {
-          // Assume local model
-          return "https://github.com/alexanderatallah/window.ai#-local-model-setup"
-        }
-        return APIKeyURL[model]
+      default:
+        return undefined
     }
   }
 }

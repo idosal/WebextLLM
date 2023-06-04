@@ -12,14 +12,17 @@ import { Settings } from "~core/views/Settings"
 import "./style.css"
 
 import { useParams } from "~core/components/hooks/useParams"
+import { Disclaimer } from "~core/views/Disclaimer"
+import { Error } from "~core/views/Error"
+import { Help } from "~core/views/Help"
 import { RequestInterrupt } from "~core/views/RequestInterrupt"
 
 function Popup() {
   return (
     <main
       className={
-        "bg-slate-200 dark:bg-slate-800" +
-        " text-slate-900 dark:text-slate-200" +
+        "bg-gray-200 dark:bg-gray-800" +
+        " text-gray-900 dark:text-gray-200" +
         " md:mx-auto p-0 w-80 h-[32rem]" +
         " text-sm font-sans"
       }>
@@ -34,7 +37,17 @@ function Popup() {
 
 function NavFrame() {
   const { requestId } = useParams()
-  const { view, setSettingsShown, settingsShown } = useNav()
+  const {
+    view,
+    setSettingsShown,
+    settingsShown,
+    helpShown,
+    setHelpShown,
+    setErrorShown,
+    errorShown,
+    disclaimerShown,
+    setDisclaimerShown
+  } = useNav()
 
   useEffect(() => {
     async function checkConfig() {
@@ -64,6 +77,24 @@ function NavFrame() {
           </div>
         </div>
       )}
+      <SlidingPane
+        shown={errorShown}
+        animated={errorShown}
+        onHide={() => setErrorShown(false)}>
+        <Error />
+      </SlidingPane>
+      <SlidingPane
+        shown={disclaimerShown}
+        animated={disclaimerShown}
+        onHide={() => setDisclaimerShown(false)}>
+        <Disclaimer />
+      </SlidingPane>
+      <SlidingPane
+        shown={helpShown}
+        animated={helpShown}
+        onHide={() => setHelpShown(false)}>
+        <Help />
+      </SlidingPane>
       <SlidingPane
         shown={settingsShown}
         animated={settingsShown}

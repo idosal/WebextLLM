@@ -48,7 +48,7 @@ const handler: PlasmoMessaging.PortHandler<
 
   const config = await configManager.forModelWithDefault(txn.model)
 
-  if (modelRouter.shouldStream(config, request.shouldStream)) {
+  if (await modelRouter.shouldStream(config, request.shouldStream)) {
     const replies: string[] = []
     const errors: string[] = []
 

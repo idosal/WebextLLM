@@ -19,12 +19,12 @@ export function Tooltip({
 
   return (
     <span
-      className="relative dark:text-slate-200 text-slate-900 cursor-pointer"
+      className="relative dark:text-amber-200 text-amber-900 cursor-pointer"
       onMouseEnter={showTooltip}
       onMouseLeave={hideTooltip}>
       {children}
       {visible && (
-        <span className="absolute z-10 left-1/2 transform -translate-x-1/2 top-full mt-2 p-3 w-52 bg-slate-900 text-slate-100 text-xs rounded-md shadow-lg">
+        <span className="absolute z-10 left-1/2 transform -translate-x-1/2 top-full mt-2 p-3 w-52 bg-gray-900 text-amber-100 text-xs rounded-md shadow-lg">
           {content}
         </span>
       )}

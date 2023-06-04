@@ -4,7 +4,6 @@
   "compilerOptions": {
     "outDir": "dist",
     "baseUrl": "./",
-
     "target": "ESNext",
     "lib": ["dom", "dom.iterable", "esnext"],
     "module": "esnext",

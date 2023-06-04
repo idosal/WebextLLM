@@ -6,13 +6,15 @@ export function Dropdown<T>({
   children,
   choices,
   getLabel,
-  onSelect
+  onSelect,
+  showArrows
 }: {
   styled?: boolean
   children: React.ReactNode
   choices: Readonly<T[]>
   getLabel?: (choice: T) => string
   onSelect: (choice: T) => void
+  showArrows: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const getLabelOrDefault =
@@ -22,11 +24,12 @@ export function Dropdown<T>({
   return (
     <div>
       <button
+        disabled={choices.length < 2}
         type="button"
         className={
           "inline-flex justify-center w-full rounded-md px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 " +
           (styled
-            ? "border shadow-sm dark:bg-indigo-500 bg-indigo-100 text-indigo-700 dark:text-white hover:bg-indigo-200 hover:dark:bg-indigo-700 border-indigo-300 dark:border-indigo-400 focus:ring-indigo-500"
+            ? "border shadow-sm text-amber-700 dark:text-white hover:bg-amber-200 hover:dark:bg-amber-700 border-amber-300 dark:border-amber-400 focus:ring-amber-500"
             : "")
         }
         id="options-menu"
@@ -34,7 +37,7 @@ export function Dropdown<T>({
         aria-expanded="true"
         onClick={() => setIsOpen(!isOpen)}>
         {children}
-        <ChevronUpDownIcon className="ml-2 h-5 w-5" />
+        {showArrows && <ChevronUpDownIcon className="ml-2 h-5 w-5" />}
       </button>
 
       {isOpen && (
@@ -47,7 +50,7 @@ export function Dropdown<T>({
             {choices.map((choice) => (
               <button
                 key={getLabelOrDefault(choice)}
-                className="block text-left w-full px-4 py-2 pr-8 text-slate-700 hover:bg-indigo-100 hover:text-indigo-900 focus:outline-none focus:bg-indigo-100 focus:text-indigo-900"
+                className="block text-left w-full px-4 py-2 pr-8 text-amber-700 hover:amber hover:text-indigo-900 focus:outline-none focus:bg-indigo-100 focus:text-indigo-900"
                 role="menuitem"
                 onClick={() => {
                   setIsOpen(false)

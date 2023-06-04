@@ -1,16 +1,16 @@
 {
-  "name": "window-extension",
-  "displayName": "Window AI",
-  "version": "0.0.8",
+  "name": "webext-llm",
+  "displayName": "WebextLLM",
+  "version": "0.0.1",
   "private": true,
-  "description": "Use your own AI models on the web",
-  "author": "Alex Atallah <alexander.atallah@gmail.com>",
+  "description": "Browser-native LLMs at your fingertips",
+  "author": "Ido Salomon <idosalomonh@gmail.com>",
   "scripts": {
     "start": "next start",
     "dev": "run-p dev:*",
     "dev:plasmo": "plasmo dev",
     "build": "run-p build:*",
-    "build:plasmo": "plasmo build --no-minify --no-hoist",
+    "build:plasmo": "plasmo build --no-hoist",
     "package": "plasmo package"
   },
   "dependencies": {
@@ -20,6 +20,7 @@
     "@types/chrome": "^0.0.231",
     "@types/webextension-polyfill": "^0.10.0",
     "@vespaiach/axios-fetch-adapter": "github:alexanderatallah/axios-fetch-adapter",
+    "async-mutex": "^0.4.0",
     "axios": "^1.3.4",
     "axios-retry": "^3.4.0",
     "object-hash": "^3.0.0",
@@ -27,8 +28,11 @@
     "puro": "^0.8.3",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "react-spinners": "^0.13.8",
+    "use-chrome-storage": "^1.2.1",
     "uuid": "^9.0.0",
-    "webextension-polyfill": "^0.10.0"
+    "webextension-polyfill": "^0.10.0",
+    "ws": "^8.13.0"
   },
   "devDependencies": {
     "@plasmohq/prettier-plugin-sort-imports": "3.6.4",
@@ -46,13 +50,29 @@
     "window.ai": "workspace:*"
   },
   "manifest": {
+    "content_security_policy": {
+      "extension_pages": "script-src 'self' 'wasm-unsafe-eval' http://localhost; object-src 'self';"
+    },
+    "action": {},
+    "web_accessible_resources": [
+      {
+        "resources": [
+          "assets/*"
+        ],
+        "matches": [
+          "https://mail.google.com/*"
+        ]
+      }
+    ],
     "host_permissions": [
       "file://*/*",
       "https://*/*",
       "http://*/*"
     ],
     "permissions": [
-      "storage"
+      "storage",
+      "offscreen",
+      "idle"
     ]
   }
 }

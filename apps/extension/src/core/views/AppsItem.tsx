@@ -34,6 +34,7 @@ export function AppsItem({ origin }: { origin: Origin }) {
         </div>
         <Splitter />
         <Dropdown
+          showArrows={true}
           choices={["allow", "ask"]}
           onSelect={(permission) =>
             setObject({

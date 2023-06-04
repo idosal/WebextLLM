@@ -9,7 +9,7 @@ const MAX_TABS_TO_NOTIFY = 100
 
 export class EventBus {
   async addListener(tabId: number) {
-    const tab = tabManager.init(tabId)
+    const tab = await tabManager.init(tabId)
     await tabManager.save(tab)
   }
 

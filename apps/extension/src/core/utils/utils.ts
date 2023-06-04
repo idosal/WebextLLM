@@ -37,6 +37,26 @@ export function objectEntries<T extends object>(obj: T): Entries<T> {
   return Object.entries(obj) as Entries<T>
 }
 
+export function messagesToPrompts(messages: ChatMessage[]): string[] {
+  const convertRoles = (role: ChatMessage["role"]) => {
+    switch (role) {
+      case "user":
+        return "USER"
+      case "assistant":
+        return "ASSISTANT"
+      default:
+        return ""
+    }
+  }
+
+  return messages.map(
+    (m) =>
+      `${convertRoles(m.role)}${convertRoles(m.role) ? ": " : ""}${
+        m.content
+      }</s>`
+  )
+}
+
 export function messagesToPrompt(messages: ChatMessage[]): string {
   return (
     messages

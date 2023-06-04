@@ -27,8 +27,8 @@ import { version } from "../../package.json"
 export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"],
   world: "MAIN",
-  all_frames: true
-  // run_at: "document_start" // This causes some Next.js pages (e.g. Plasmo docs) to break
+  all_frames: true,
+  run_at: "document_end"
 }
 
 export const windowAI: WindowAI<ModelID> = {
@@ -41,7 +41,11 @@ export const windowAI: WindowAI<ModelID> = {
     const { onStreamResult } = _validateOptions(options)
     const shouldStream = !!onStreamResult
     const requestId = _relayRequest(PortName.Completion, {
-      transaction: transactionManager.init(input, _getOriginData(), options),
+      transaction: await transactionManager.init(
+        input,
+        _getOriginData(),
+        options
+      ),
       shouldStream
     })
     return new Promise((resolve, reject) => {
@@ -194,4 +198,4 @@ window.addEventListener(
   false
 )
 
-window.ai = window.ai || windowAI
+window.ai = windowAI

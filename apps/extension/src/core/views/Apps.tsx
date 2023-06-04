@@ -65,7 +65,7 @@ function AppsRow({
 }) {
   return (
     <div
-      className={`p-2 h-[4rem] grid grid-cols-7 cursor-pointer hover:bg-slate-300 dark:hover:bg-slate-700`}
+      className={`p-2 h-[4rem] grid grid-cols-7 cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-700`}
       onClick={onSelect}>
       <Logo
         className="self-start mx-2 my-1 w-5 rounded-full"

@@ -6,12 +6,21 @@ export type NavView = "activity" | "apps"
 const useNavProvider = () => {
   const [view, setView] = useState<NavView>("activity")
   const [settingsShown, setSettingsShown] = useState(false)
+  const [helpShown, setHelpShown] = useState(false)
+  const [errorShown, setErrorShown] = useState(false)
+  const [disclaimerShown, setDisclaimerShown] = useState(false)
 
   return {
     view,
     settingsShown,
+    helpShown,
     setView,
-    setSettingsShown
+    setSettingsShown,
+    setHelpShown,
+    errorShown,
+    setErrorShown,
+    disclaimerShown,
+    setDisclaimerShown
   }
 }
 

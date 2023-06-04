@@ -1,103 +1,82 @@
-# Window: use your own AI models on the web
+# WebextLLM - browser-native LLMs at your fingertips
 
-[![](https://dcbadge.vercel.app/api/server/KBPhAPEJNj?style=flat)](https://discord.gg/KBPhAPEJNj)
+<!-- ![image](https://github.com/idosal/WebextLLM/assets/18148989/53ba62c8-9e6a-441e-8e29-a1bf18d3c646)
+ -->
+<p align="center"><img height="30%" width="30%" src="https://github.com/idosal/WebextLLM/assets/18148989/53ba62c8-9e6a-441e-8e29-a1bf18d3c646"</img></p>
 
-Window AI is a browser extension that lets you configure AI models in one place and use them on the web.
+<div align="center">
 
-- **For developers**: easily make multi-model apps free from API costs and limits - just use the injected `window.ai` library. Leverage decentralized AI.
+[![Medium Badge](https://badgen.net/badge/icon/medium?icon=medium&label)](https://medium.com/@idosalomon)
+[![Twitter Follow](https://img.shields.io/twitter/follow/idosal1?style=social)](https://twitter.com/idosal1)
+[![CWS Badge](https://img.shields.io/chrome-web-store/rating/chbepdchbogmcmhilpfmijbkfpplgnoh.svg)](https://chrome.google.com/webstore/chbepdchbogmcmhilpfmijbkfpplgnoh)
+</div>
 
-- **For users**: control the AI you use on the web, whether it's external (like OpenAI), proxied, or local, to protect privacy.
+--------------------------
 
-- **For model providers**: plug into an ecosystem of users without requiring developers to change their apps.
 
-More about why this was made [here](https://twitter.com/xanderatallah/status/1643356106670981122).
+*Unleash the power of AI in your browser!*
 
-Below, you'll find out [how to install](#-installation), [how to find apps](#-find-apps), [how to make apps](#-docs), and [how to connect custom models](#-local-model-setup).
 
-### 📺 Demo
+WebextLLM is the first extension in the Chrome Web Store to embed local open-source LLMs in the browser.
+Harness browser-native LLMs to fuel a growing AI-based application ecosystem (based on and mostly-compliant with the [window.ai](https://github.com/alexanderatallah/window.ai) API), as a user, developer, or model provider.
 
-https://user-images.githubusercontent.com/1011391/230610706-96755450-4a3b-4530-b19f-5ae405a31516.mp4
+https://github.com/idosal/WebextLLM/assets/18148989/1f1df430-0fad-4233-b53c-3047bec26d5e
 
-### ℹ️ Contents
 
-- [Window: use your own AI models on the web](#window-use-your-own-ai-models-on-the-web)
-    - [📺 Demo](#-demo)
-    - [ℹ️ Contents](#ℹ️-contents)
-  - [⭐️ Main features](#️-main-features)
-  - [⚙️ How it works](#️-how-it-works)
-  - [📥 Installation](#-installation)
-    - [Browser support](#browser-support)
-    - [Beta builds](#beta-builds)
-  - [👀 Find apps](#-find-apps)
-  - [📄 Docs](#-docs)
-    - [Why should I build with this?](#why-should-i-build-with-this)
-    - [Getting started](#getting-started)
+### Why should I use WebextLLM?
+There are several main advantages to the extension over other solutions. It's:
+- **Free** - The model runs on your hardware, eliminating the need for costly service providers
+- **Private** - Your data remains securely on your device, safeguarding your privacy
+- **Unlimited** - Take full control of the model without any quotas, censorship, or limitations
+- **Highly available** - Overcome limitations of internet connectivity and cloud-based LLM availability
+
+### Why should I develop applications using WebextLLM (window.ai)?
+- **Ease of use** - The `window.ai API` is designed to be simple, working seamlessly with any JavaScript application. No complex SDKs or framework-specific wrappers required.
+- **Free** - Say goodbye to cloud LLM costs and enjoy the benefits of a cost-free solution
+- **Unlimited** - Break free from API quotas and limits, enabling you to unlock the full potential of your applications
+- **Existing user base** - Tap into a rapidly growing ecosystem of users and developers utilizing `window.ai`
+- **Liability** - Empower your users to decide which model they want to use, giving them full control and ownership
+
+<!-- ### Contents
+- [On the horizon](#on-the-horizon)
+- [Features](#features)
+- [Getting started](#getting-started)
+  - [As a user](#as-a-user)
+  - [As an application developer](#as-an-application-developer)
     - [Functions](#functions)
     - [CompletionOptions](#completionoptions)
-    - [Model IDs](#model-ids)
     - [Error codes](#error-codes)
-    - [Community tools](#community-tools)
-  - [🧠 Local model setup](#-local-model-setup)
-    - [Server API Spec](#server-api-spec)
-    - [Demo comparing Alpaca with GPT-4](#demo-comparing-alpaca-with-gpt-4)
-  - [🤝 Contributing](#-contributing)
+- [Setup](#setup)
+  - [Browser support](#browser-support)
+- [Available apps](#available-apps)
+- [Contributing](#contributing)
+- [Disclaimer](#disclaimer) -->
 
-## ⭐️ Main features
+## Features
 
-- **Configure keys**: set all your API keys in one place and forget about them. They are _only_ stored locally.
+* Own your models: Experience the freedom of owning and controlling the LLMs, enjoying a limitless, private, and secure environment.
+* Control: Exercise complete control over access to your LLM, granting or denying permission to any application at any time.
+* Visibility: Gain insights into the history of prompts and responses to your model across different applications.
 
-- **User-controlled models**: use external, proxied, and local models of your choice.
+## On the horizon
+- [ ] Make it easy to add new models
+- [ ] Lower minimum requirements to make it accessible to all
+- [ ] Make it easier to format responses
+- [ ] Add support for more browsers
 
-- **Save your prompt history** across apps (maybe train your own models with it).
+## Getting started
+### As a user
 
-## ⚙️ How it works
+1. Install the extension from the Chrome Web Store (recommended) or build it yourself (see [how](#🧠-local-model-setup)).
+2. In the `Configuration` tab, verify that the model is ready for use ([wizard-vicuna-7b-uncensored](https://huggingface.co/ehartford/Wizard-Vicuna-7B-Uncensored)). The model weighs ~4GB that need to be downloaded once (on first use). The model is then cached so future initializations will be much quicker (and offline).
+3. Navigate to an application that utilizes `window.ai` (see [apps](#👀-find-apps)).
+4. Approve the application's request to use the model (you may choose to grant unlimited access to the application).
+5. ??? 
+6. Profit
 
-1. You configure your keys and models just once in the extension (see [demo](#📺-demo) above).
+### As an application developer
 
-2. Apps can request permission to send prompts to your chosen model via the injected `window.ai` library (see the simple [docs](#📄-docs)).
-
-3. You maintain visibility on what's being asked and when.
-
-It works with these models:
-
-- OpenAI's [GPT-3.5 and GPT-4](https://platform.openai.com/)
-- Together's [GPT NeoXT 20B](https://github.com/togethercomputer/OpenChatKit/blob/main/docs/GPT-NeoXT-Chat-Base-20B.md)
-- Cohere [Xlarge](https://dashboard.cohere.ai/)
-- Open models, like Alpaca, that can run locally (see [how](#🧠-local-model-setup)).
-
-## 📥 Installation
-
-Download the Chrome extension here: https://chrome.google.com/webstore/detail/window-ai/cbhbgmdpcoelfdoihppookkijpmgahag
-
-### Browser support
-✅ [Chrome](https://chrome.google.com/webstore/detail/window-ai/cbhbgmdpcoelfdoihppookkijpmgahag)
-✅ [Brave](https://chrome.google.com/webstore/detail/window-ai/cbhbgmdpcoelfdoihppookkijpmgahag)
-✏️ Microsoft Edge
-✏️ Firefox
-✏️ Safari: https://github.com/alexanderatallah/window.ai/issues/20
-
-### Beta builds
-You can join the [#beta-builds channel on Discord](https://discord.gg/KBPhAPEJNj) to get early access to features being tested and developed by the community.
-
-## 👀 Find apps
-
-Better ways of doing this are coming soon, but today, you can use the [Discord #app-showcase channel](https://discord.gg/6kMeRxc2TE) to discover new `window.ai`-compatible apps, or you can browse user-submitted ones on aggregators:
-
-- [Skylight](https://www.skylightai.io/)
-
-## 📄 Docs
-
-This section shows why and how to get started, followed by a reference of `window.ai` methods.
-
-### Why should I build with this?
-
-**Infrastructure burden**: No more model API costs, timeouts, rate limiting. Reduced server billing time.
-
-**Easily go multi-model**. Integrate once, and then let Window handle model upgrades and support for other providers.
-
-**Privacy**: Now you can build privacy-conscious apps that just talk to the user's choice of model, and you have less liability for the model's output.
-
-### Getting started
+This section is taken almost as-is from the [window.ai repository](https://github.com/alexanderatallah/window.ai).
 
 To leverage user-managed models in your app, simply call `await window.ai.generateText` with your prompt and options.
 
@@ -113,7 +92,7 @@ console.log(response.message.content) // "I am an AI language model"
 
 All public types, including error messages, are documented in [this file](/apps/extension/src/public-interface.ts). `Input`, for example, allows you to use both simple strings and [ChatML](https://github.com/openai/openai-python/blob/main/chatml.md).
 
-Example of streaming GPT-4 results to the console:
+Example of streaming results to the console:
 
 ```ts
 await window.ai.generateText(
@@ -122,8 +101,6 @@ await window.ai.generateText(
   },
   {
     temperature: 0.7,
-    maxTokens: 800,
-    model: ModelID.GPT4,
     onStreamResult: (res) => console.log(res.message.content)
   }
 )
@@ -133,7 +110,7 @@ Note that `generateText` will return an array, `Output[]`, that only has multipl
 
 This **does not guarantee that the length of the return result will equal `numOutputs`**. If the model doesn't support multiple choices, then only one choice will be present in the array.
 
-### Functions
+#### Functions
 
 The Window API is simple. Just a few functions:
 
@@ -165,7 +142,7 @@ window.ai.addEventListener((event: EventType, data: unknown) => {
 
 All public types, including error messages, are documented in [this file](/apps/extension/src/public-interface.ts). Highlights below:
 
-### CompletionOptions
+#### CompletionOptions
 
 This options dictionary allows you to specify options for the completion request.
 
@@ -180,47 +157,23 @@ export interface CompletionOptions {
   // Different models have different defaults.
   temperature?: number
 
+  /* In the future, we'll support the full spec and more. For example:
+  
   // How many completion choices to generate. Defaults to 1.
   numOutputs?: number
 
   // The maximum number of tokens to generate in the chat completion. Defaults to infinity, but the
   // total length of input tokens and generated tokens is limited by the model's context length.
-  maxTokens?: number
-
-  // Sequences where the API will stop generating further tokens.
-  stopSequences?: string[]
-
-  // Identifier of the model to use. Defaults to the user's current model, but can be overridden here.
-  // Arbitrary strings are allowed, and will be passed to the Local model as `model`.
-  // NOTE: this standard is evolving - recommend not using this if you're making an immutable app.
-  model?: ModelID | string
+  maxTokens?: number */
 }
 ```
 
-### Model IDs
-
-ModelID is an enum of the available models:
-
-```ts
-// NOTE: this is an evolving standard, and may change in the future.
-// "/" Splits the organization's name from the model name
-export enum ModelID {
-  GPT3 = "openai/gpt3.5",
-  GPT4 = "openai/gpt4",
-  GPTNeo = "together/gpt-neoxt-20B",
-  Cohere = "cohere/xlarge",
-  Local = "local"
-}
-```
-
-### Error codes
+#### Error codes
 
 Errors emitted by the extension API:
 
 ```ts
 export enum ErrorCode {
-  // Incorrect API key / auth
-  NotAuthenticated = "NOT_AUTHENTICATED",
 
   // User denied permission to the app
   PermissionDenied = "PERMISSION_DENIED",
@@ -237,75 +190,41 @@ export enum ErrorCode {
 }
 ```
 
-### Community tools
+## Setup
 
-Hope to eventually make an `awesome-window.ai` repo, but in the meantime:
+There are two setup options:
+1. Install the extension from the [Chrome Web Store](https://chrome.google.com/webstore/chbepdchbogmcmhilpfmijbkfpplgnoh) (recommended)
+2. Build the extension yourself (see [how](#contributing))
 
-- **🪄 [Wanda](https://github.com/haardikk21/wanda)**: React Hooks for working with `window.ai`
+### Browser support
+✅ [Chrome](https://chrome.google.com/webstore/detail/window-ai/cbhbgmdpcoelfdoihppookkijpmgahag) and other Chromium based browsers (e.g., Brave, Edge, etc.)
 
-## 🧠 Local model setup
+## Available apps
 
-You can configure any local model to work with Window-compatible apps by writing a simple HTTP server.
+Explore apps that use the `window.ai` API:
+- [Skylight](https://www.skylightai.io/)
 
-Here are instructions for setting up an [Alpaca](https://github.com/tatsu-lab/stanford_alpaca) server locally with FastAPI and Uvicorn: [Alpaca Turbo](https://github.com/alexanderatallah/Alpaca-Turbo#using-the-api).
+- [Window.ai Discord #app-showcase channel](https://discord.gg/6kMeRxc2T)
 
-### Server API Spec
+## Contributing
 
-**Types**
+The extension is built with [Plasmo](https://docs.plasmo.com/).
 
-- `ChatMessage`: `{"role": string, "content": string}`
-
-**POST `/completions`**
-
-This endpoint accepts a request body containing the following parameters:
-
-- `prompt`: The prompt(s) to generate completions for, encoded as a `string`. OR you can use ChatML format via `messages`:
-- `messages` an array of `ChatMessage`s.
-- `model`: a string representing the type of model being requested. ex: `ModelID.GPT4`
-- `max_tokens`: The maximum number of tokens to generate in the completion.
-- `temperature`: What sampling temperature to use, between 0 and 2.
-- `stop_sequences`: A string or array of strings where the API will stop generating further tokens. The returned text will not contain the stop sequence.
-- `stream`: A boolean representing whether to stream generated tokens, sent as data-only server-sent events as they become available. Defaults to false.
-- `num_generations`: How many choices to generate (should default to 1).
-
-**Note:** apps like `windowai.io` will ask to stream, so your local server might not work with them until you support streaming.
-
-**Return value:**
-
-This endpoint should return an object that looks like:
-
-```ts
-{
-  choices: Array<{ text: string }>
-}
-```
-
-More WIP thinking [here](https://alexatallah.notion.site/RFC-LLM-API-Standard-c8f15d24bd2f4ab98b656f08cdc1c4fb).
-
-### Demo comparing Alpaca with GPT-4
-
-[Demo context](https://twitter.com/xanderatallah/status/1643356112073129985)
-
-https://user-images.githubusercontent.com/1011391/230620781-57b8ffdb-4081-488c-b059-0daca5806b5a.mp4
-
-## 🤝 Contributing
-
-This is a turborepo monorepo containing:
-
-1. A [Plasmo extension](https://docs.plasmo.com/) project.
-2. A web app serving [windowai.io](https://windowai.io).
-3. Upcoming packages to help developers (see Discord for more info).
-
-**To run the extension and the web app in parallel:**
-
-```bash
-pnpm dev
-```
-
-**To build them both:**
-
+Build with:
 ```bash
 pnpm build
 ```
 
-After building, open your browser and load the appropriate development build by [loading an unpacked extension](https://developer.chrome.com/docs/extensions/mv3/getstarted/development-basics/#load-unpacked). For example, if you are developing for the Chrome browser, using manifest v3, use: `build/chrome-mv3-dev`.
+[Load the unpacked extension to the browser](https://developer.chrome.com/docs/extensions/mv3/getstarted/development-basics/#load-unpacked):
+
+Chrome - `build/chrome-mv3-prod`.
+
+
+## Disclaimer
+This project is a proof-of-concept utilizing experimental technologies. It is by no means a production-ready implementation, and it should not be used for anything other than research. It's provided "as-is" without any warranty, expressed or implied. By using this software, you agree to assume all risks associated with its use, including but not limited to data loss, system failure, or any other issues that may arise.
+The models supplied as part of this project were not created by, are not owned by, are not affiliated with, and are not endorsed by the author of this project. The author of this project does not claim any ownership of the models, and is not responsible for any issues that may arise from their use. Please be advised that open-source models, particularly uncensored, aren't regulated, and may produce offensive or harmful content.
+Similarly, the applications that utilize `window.ai` are not affiliated with the author of this project. The author of this project does not claim any ownership of the applications, and is not responsible for any issues that may arise from their use. Use at your own risk.
+
+
+## Acknowledgements
+This project utilizes and builds on the incredible work by [web-llm](https://github.com/mlc-ai/web-llm) and [window.ai](https://github.com/alexanderatallah/window.ai)!

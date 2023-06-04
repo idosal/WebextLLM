@@ -6,16 +6,16 @@ export function NoActivity() {
       <Text size="lg" align="center" strength="medium">
         Nothing here yet
       </Text>
-      <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">
-        Join the{" "}
+      <p className="mt-4 text-center text-sm text-amber-600 dark:text-amber-400">
+        Visit{" "}
         <a
-          className="text-indigo-800 font-medium dark:text-white"
-          href="https://discord.gg/vDAvbuySYv"
+          className="text-amber-800 font-medium dark:text-white"
+          href="https://www.skylightai.io/"
           target="_blank"
           rel="noreferrer">
-          Discord server
+          Skylight AI
         </a>{" "}
-        to explore window.ai apps.
+        to explore apps that use window.ai
       </p>
     </div>
   )
