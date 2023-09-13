@@ -203,7 +203,7 @@ export class Model {
     try {
       const payload = transformForRequest(request, opts)
 
-      result = await this.api.generate(payload, console.log, requestOpts)
+      result = await this.api.generate(payload, () => {}, requestOpts)
       result = result.data
     } catch (err: unknown) {
       const errMessage = `${err.response?.status}: ${err}`
@@ -240,9 +240,7 @@ export class Model {
 
     try {
       const payload = transformForRequest(request, opts)
-      const response = await this.api.stream(payload, console.log, {})
-
-      return response
+      return await this.api.stream(payload, () => {}, {})
     } catch (err: unknown) {
       const errMessage = `${err.response?.status}: ${err}`
       this.error(errMessage + "\n" + err.response?.data)

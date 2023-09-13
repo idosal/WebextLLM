@@ -1,417 +1,485 @@
-// @ts-nocheck
+import { default as deepEqual } from 'fast-deep-equal';
 
-import type { PromptInput } from "window.ai/dist"
 
-import type { RequestPrompt } from "~core/llm/model"
-import type { RequestOptions } from "~core/llm/nmodel"
 
-import { Tokenizer } from "./tokenizer"
-import { detectGPUDevice, instantiate } from "./tvm/tvmjs.bundle.js"
-import EmccWASI from "./tvm/tvmjs_runtime.wasi.js"
+import * as tvmjs from "~core/llm/native/tvm/index";
 
-function getFromParent(key: string) {
-  return new Promise(function (resolve) {
-    window.parent.postMessage({ name: "cacheGet", key }, "*")
 
-    function handleMessage(event: MessageEvent<any>) {
-      // Ensure the message is from the parent window
-      if (event.source === window.parent) {
-        // Resolve the promise with the received data
-        resolve(event.data.val)
-        window.removeEventListener("message", handleMessage)
-      }
-    }
 
-    // Listen for messages from the parent window
-    window.addEventListener("message", handleMessage)
-  })
-}
+import type { ChatConfig } from "./config";
+import { Conversation, getConversation } from "./conversation";
+import { Tokenizer } from "./tokenizer";
 
-class LLMChatPipeline {
-  tvm: any
-  logger: any
-  tokenizer: any
-  bosTokenId: number
-  eosTokenId: number
-  maxWindowLength: number
-  maxGenLength: number
-  meanGenLength: number
-  streamInterval: number
-  decodingTotalTime: number
-  decodingTotalTokens: number
-  encodingTotalTime: number
-  encodingTotalTokens: number
-  conversation: any
-  device: any
-  vm: any
-  encoding: any
-  decoding: any
-  params: any
-  appeared_tokens: Set<any>
-  fclearKVCaches: any
-  kvCache: any
-  logitsOnCPU: any
-  kvCacheLength: number
-  clearCache: boolean
-  repetitionPenalty: number
 
-  constructor(tvm: any, tokenizer: any, cacheMetadata: any, config: any) {
-    if (cacheMetadata == undefined) {
-      throw Error("Expect cacheMetadata")
-    }
-    this.tvm = tvm
-    this.logger = console.log
-    this.tokenizer = tokenizer
-    this.bosTokenId = 1
-    this.eosTokenId = 2
-    this.repetitionPenalty = config.repetitionPenalty
-    this.appeared_tokens = new Set()
-    this.maxWindowLength = config.maxWindowLength
-    this.maxGenLength = config.maxGenLength
-    this.meanGenLength = config.meanGenLength
-    this.streamInterval = 1
 
-    this.decodingTotalTime = 0
-    this.decodingTotalTokens = 0
-    this.encodingTotalTime = 0
-    this.encodingTotalTokens = 0
 
-    this.device = this.tvm.webgpu() // FIXME webgpu
+
+export class LLMChatPipeline {
+  private config: ChatConfig;
+  private tokenizer: Tokenizer;
+
+  // TVM functions
+  private tvm: tvmjs.Instance;
+  private device: tvmjs.DLDevice;
+  private vm: tvmjs.VirtualMachine;
+  private prefill: tvmjs.PackedFunc;
+  private decoding: tvmjs.PackedFunc;
+  private fclearKVCaches: tvmjs.PackedFunc;
+
+  // parameter states
+  private params: tvmjs.TVMObject;
+  private kvCache: tvmjs.TVMObject;
+  private logitsOnCPU?: tvmjs.NDArray = undefined;
+  private filledKVCacheLength = 0;
+
+  // meta data
+  // TODO(tvm-team): remove hard-coded bos from config, likely can be part of conv template
+  private bosTokenId = 1;
+  private maxWindowLength;
+  private resetStatsPerPrefill = true;
+  private stopStr: string;
+  private stopTokens: Array<number>;
+
+  // states
+  private outputMessage = "";
+  private outputIds: Array<number> = [];
+  private stopTriggered = false;
+  private appearedTokens = new Set<number>();
+  private conversation: Conversation;
+  // Total amount of seq len prefilled so far
+
+  // stats
+  private decodingTotalTime = 0;
+  private decodingTotalTokens = 0;
+  private prefillTotalTime = 0;
+  private prefillTotalTokens = 0;
+
+  // logger
+  private logger = () => {};
+
+  constructor(tvm: tvmjs.Instance, tokenizer: Tokenizer, config: ChatConfig) {
+    this.tvm = tvm;
+    this.tokenizer = tokenizer;
+    this.config = { repetition_penalty: 1.01, top_p: 0.95, temperature: 0.7, ...config }
+
+    // console.error("config", JSON.stringify(config));
+
+    this.conversation = getConversation(config.conv_template, config.conv_config);
+    this.stopStr = this.conversation.getStopStr();
+
+    this.device = this.tvm.webgpu();
+    tvm.beginScope();
+
     this.vm = this.tvm.detachFromCurrentScope(
-      this.tvm.createVirtualMachine(this.device)
-    )
-    this.encoding = this.tvm.detachFromCurrentScope(
-      this.vm.getFunction("encoding")
-    )
+        this.tvm.createVirtualMachine(this.device)
+    );
+    this.prefill = this.tvm.detachFromCurrentScope(
+        this.vm.getFunction("prefill")
+    );
     this.decoding = this.tvm.detachFromCurrentScope(
-      this.vm.getFunction("decoding")
-    )
+        this.vm.getFunction("decode")
+    );
     this.params = this.tvm.detachFromCurrentScope(
-      this.tvm.getParamsFromCache("param", cacheMetadata.ParamSize)
-    )
-    const fcreateCache = this.vm.getFunction("create_kv_cache")
+        this.tvm.getParamsFromCache("param", -1)
+    );
+    const fgetMetadata = this.vm.getFunction("get_metadata");
+    const ret_value = fgetMetadata();
+    const metadataStr = this.tvm.detachFromCurrentScope(ret_value).toString();
+    const metadata = JSON.parse(metadataStr);
+    this.maxWindowLength = metadata.max_window_size;
+    // TODO(tvm-team): move to conv template
+    this.stopTokens = metadata.stop_tokens;
+
+    const fcreateCache = this.vm.getFunction("create_kv_cache");
     this.fclearKVCaches = this.tvm.detachFromCurrentScope(
-      this.tvm.getGlobalFunc("vm.builtin.attention_kv_cache_array_clear")
-    )
+        this.tvm.getGlobalFunc("vm.builtin.attention_kv_cache_array_clear")
+    );
 
     // use extern config for now
-    this.kvCache = this.tvm.detachFromCurrentScope(fcreateCache())
-    // fill with pad token
-    this.logitsOnCPU = undefined
-
-    this.kvCacheLength = 0
-    this.clearCache = true
+    this.kvCache = this.tvm.detachFromCurrentScope(fcreateCache());
+    this.filledKVCacheLength = 0;
+    tvm.endScope();
   }
 
   dispose() {
-    // note: tvm instance is not owned by this class
-    this.params.dispose()
-    this.decoding.dispose()
-    this.encoding.dispose()
-    this.vm.dispose()
-    this.kvCache.dispose()
-    this.fclearKVCaches.dispose()
-    if (this.logitsOnCPU != undefined) {
-      this.logitsOnCPU.dispose()
+    this.params.dispose();
+    this.decoding.dispose();
+    this.prefill.dispose();
+    this.vm.dispose();
+    this.kvCache.dispose();
+    this.fclearKVCaches.dispose();
+    this.logitsOnCPU?.dispose();
+    this.tvm.dispose();
+    this.tokenizer.dispose();
+  }
+
+  /**
+   * Get the current message.
+   */
+  getMessage() {
+    return this.outputMessage;
+  }
+
+  /**
+   * Reset the runtime statistics
+   */
+  resetRuntimeStats() {
+    this.prefillTotalTime = 0;
+    this.prefillTotalTokens = 0;
+    this.decodingTotalTime = 0;
+    this.decodingTotalTokens = 0;
+  }
+
+  /**
+   * Reset the chat history
+   */
+  resetChat() {
+    this.conversation.reset();
+    this.resetRuntimeStats();
+    this.fclearKVCaches(this.kvCache);
+    this.filledKVCacheLength = 0;
+  }
+
+  /**
+   * @returns Whether stop is triggered.
+   */
+  stopped(): boolean {
+    return this.stopTriggered;
+  }
+
+  /**
+   * @returns Runtime stats information.
+   */
+  runtimeStatsText(): string {
+    return (
+        `prefill: ${(this.prefillTotalTokens / this.prefillTotalTime).toFixed(4)} tokens/sec, ` +
+        `decoding: ${(this.decodingTotalTokens / this.decodingTotalTime).toFixed(4)} tokens/sec`
+    )
+  }
+
+  async asyncLoadWebGPUPipelines() {
+    await this.tvm.asyncLoadWebGPUPipelines(this.vm.getInternalModule());
+  }
+
+  getNewConversation(): Conversation {
+    return getConversation(this.config.conv_template, this.config.conv_config);
+  }
+
+  /**
+   * Replaces existing conversation
+   */
+  setConversation(conversation: Conversation) {
+    if (deepEqual(conversation, this.conversation)) {
+      return
+    }
+
+    this.resetChat()
+    this.resetRuntimeStats()
+    this.stopTriggered = false
+    this.conversation = conversation
+  }
+
+  // appendReply(message: string) {
+  //   const role = this.config?.conv_config?.roles?.length ? this.config.conv_config.roles[1] : '';
+  //   this.conversation.appendMessage(role, message);
+  // }
+
+  // appendPrompt(message: string) {
+  //   const role = this.config?.conv_config?.roles?.length ? this.config.conv_config.roles[0] : '';
+  //   this.conversation.appendMessage(role, message);
+  // }
+
+  /**
+   * Generate the first token given input prompt
+   */
+  async prefillStep(inp: string): Promise<void> {
+    if (this.resetStatsPerPrefill) {
+      this.resetRuntimeStats();
+    }
+
+    // cleanup the per convo states
+    this.outputIds = [];
+    this.appearedTokens.clear();
+    this.outputMessage = "";
+    this.stopTriggered = false;
+    const conversation = this.conversation;
+
+    // initialize
+    conversation.appendMessage(conversation.config.roles[0], inp);
+    conversation.appendReplyHeader(conversation.config.roles[1]);
+    const promptTokens = this.getInputTokens();
+
+    const tstart = performance.now();
+    this.tvm.beginScope();
+    const inputData = this.tvm.empty([1, promptTokens.length], "int32", this.device);
+    inputData.copyFrom(promptTokens);
+
+    const newSeqLen = this.filledKVCacheLength + promptTokens.length;
+    const logits = this.tvm.detachFromCurrentScope(
+        this.forward(inputData, newSeqLen)
+    );
+    this.filledKVCacheLength = newSeqLen;
+    this.tvm.endScope();
+
+    const nextToken = await this.sampleTokenFromLogits(
+        logits, this.config.temperature, this.config.top_p);
+    logits.dispose();
+    const tend = performance.now();
+
+    this.prefillTotalTime += (tend - tstart) / 1e3;
+    this.prefillTotalTokens += promptTokens.length;
+
+    this.processNextToken(nextToken);
+  }
+
+  async decodeStep(): Promise<void> {
+    if (this.stopTriggered) {
+      throw Error("Cannot run decode when stopped");
+    }
+
+    const tstart = performance.now();
+
+    this.tvm.beginScope();
+    const inputData = this.tvm.empty([1, 1], "int32", this.device);
+    inputData.copyFrom(this.outputIds.slice(this.outputIds.length - 1));
+
+    const logits = this.tvm.detachFromCurrentScope(
+        this.forward(inputData, this.filledKVCacheLength + 1)
+    );
+    this.filledKVCacheLength += 1;
+    this.tvm.endScope();
+
+    // sample from logits
+    const nextToken = await this.sampleTokenFromLogits(
+        logits, this.config.temperature, this.config.top_p);
+    logits.dispose();
+    const tend = performance.now();
+
+    this.decodingTotalTime += (tend - tstart) / 1e3;
+    this.decodingTotalTokens += 1;
+
+    this.processNextToken(nextToken);
+  }
+
+  /**
+   * Manually trigger stop if it is not stopped.
+   */
+  triggerStop() {
+    // console.log('triggerStop')
+    if (this.stopTriggered) {
+      return;
+    }
+    this.stopTriggered = true;
+    this.conversation.finishReply(this.outputMessage);
+  }
+
+  /**
+   * Add a generated token and check for stop.
+   *
+   * @param nextToken The next token.
+   */
+  private processNextToken(nextToken: number): void {
+    if (this.stopTriggered) {
+      throw Error("Cannot call process when it is stoppped");
+    }
+
+    this.outputIds.push(nextToken);
+    this.appearedTokens.add(nextToken);
+
+    // if there is a stop token
+    if (this.stopTokens.includes(nextToken)) {
+      // console.log('stop triggered stopTokens.includes', this.stopTokens, nextToken)
+
+      this.stopTriggered = true;
+    }
+
+    let outputMessage = this.tokenizer.decode(new Int32Array(this.outputIds));
+    const stopPos = outputMessage.lastIndexOf(this.stopStr);
+    if (stopPos != -1) {
+      outputMessage = outputMessage.substring(0, stopPos);
+      // console.log('stop triggered stopPos != -1', outputMessage)
+      this.stopTriggered = true;
+    }
+    this.outputMessage = outputMessage;
+
+    if (this.stopTriggered) {
+      // console.log('finishing reply', this.conversation, this.outputMessage)
+      this.conversation.finishReply(this.outputMessage);
     }
   }
 
-  private clearKVCache() {
-    this.fclearKVCaches(this.kvCache)
-  }
-
-  private forward(inputs: any, curPos: number) {
-    this.tvm.beginScope()
-    var retValue
-    const seqLenShape = this.tvm.makeShapeTuple([curPos])
+  private forward(inputs: tvmjs.NDArray, curPos: number): tvmjs.NDArray {
+    this.tvm.beginScope();
+    let retValue;
+    const seqLenShape = this.tvm.makeShapeTuple([curPos]);
     if (inputs.shape[1] > 1) {
-      retValue = this.encoding(inputs, seqLenShape, this.kvCache, this.params)
+      retValue = this.prefill(
+          inputs, seqLenShape, this.kvCache, this.params
+      );
     } else {
-      retValue = this.decoding(inputs, seqLenShape, this.kvCache, this.params)
+      retValue = this.decoding(
+          inputs, seqLenShape, this.kvCache, this.params
+      );
     }
-
-    const logits = this.tvm.detachFromCurrentScope(retValue.get(0))
-    // console.log('decoded', this.tokenizer.decode(logits))
-    // console.log('logits', logits)
-    this.tvm.endScope()
-    this.tvm.attachToCurrentScope(logits)
-    return logits
+    const logits = this.tvm.detachFromCurrentScope(retValue.get(0));
+    this.tvm.endScope();
+    this.tvm.attachToCurrentScope(logits);
+    return logits;
   }
 
   // NOTE: caller must call device.sync()
-  private updateLogitsOnCPU(logits: any) {
-    // console.log('logits', logits.toArray())
+  private updateLogitsOnCPU(logits: tvmjs.NDArray): tvmjs.NDArray {
     if (this.logitsOnCPU == undefined) {
       this.logitsOnCPU = this.tvm.detachFromCurrentScope(
-        this.tvm.empty(logits.shape, logits.dtype, this.tvm.cpu())
-      )
+          this.tvm.empty(logits.shape, logits.dtype, this.tvm.cpu())
+      );
     } else {
       if (logits.shape[0] != this.logitsOnCPU.shape[0]) {
-        throw Error("We expect the size of logits to remain unchanged")
+        throw Error("We expect the size of logits to remain unchanged");
       }
     }
-    this.logitsOnCPU.copyFrom(logits)
+    this.logitsOnCPU.copyFrom(logits);
+    return this.logitsOnCPU;
   }
 
-  async sampleTokenFromLogits(logits, temperature = 1, top_p = 0.95) {
-    this.tvm.beginScope()
-    this.updateLogitsOnCPU(logits)
-    this.tvm.endScope()
-    await this.device.sync()
-    // Creating array of pairs to store data
-    const l = this.logitsOnCPU.toArray()
-    const data: [number, number][] = new Array(l.length - 1)
+  private async sampleTokenFromLogits(
+      logitsOnGPU: tvmjs.NDArray,
+      temperature: number,
+      top_p: number
+  ) {
+    this.tvm.beginScope();
+    const logitsOnCPU = this.updateLogitsOnCPU(logitsOnGPU);
+    this.tvm.endScope();
+    await this.device.sync();
 
-    // Populating data array with logits and indices
-    for (let i = 0; i < data.length; i++) {
-      data[i] = [l[i], i]
+    if (this.logitsOnCPU == undefined) {
+      throw Error("logits should be assigned");
     }
 
-    // Sorting data array in descending order based on logits values
-    // data.sort((a, b) => b[0] - a[0])
-    // console.log('data', data)
-    // console.log('decoded token', this.tokenizer.decode([data[0][1]]))
-    if (this.repetitionPenalty < 1.0 + 1e-6) {
-      return this.tvm.sampleTopPFromLogits(this.logitsOnCPU, temperature, top_p)
+    if (this.config.repetition_penalty < 1.0 + 1e-6) {
+      return this.tvm.sampleTopPFromLogits(logitsOnCPU, temperature, top_p);
     } else {
-      this.tvm.beginScope()
-      // const appeared_tokens_ndarray = this.tvm.empty([1, this.appeared_tokens.size], "int32", this.tvm.cpu()); // FIXME track appeared_tokens
-      // appeared_tokens_ndarray.copyFrom(Array.from(this.appeared_tokens));
-      // this.tvm.applyRepetitionPenalty(this.logitsOnCPU, appeared_tokens_ndarray, this.repetitionPenalty);
-      this.tvm.endScope()
-      return this.tvm.sampleTopPFromLogits(this.logitsOnCPU, temperature, top_p)
+      this.tvm.beginScope();
+      const appeared_tokens_ndarray = this.tvm.empty(
+          [1, this.appearedTokens.size], "int32", this.tvm.cpu());
+      appeared_tokens_ndarray.copyFrom(Array.from(this.appearedTokens));
+      this.tvm.applyRepetitionPenalty(
+          this.logitsOnCPU, appeared_tokens_ndarray, this.config.repetition_penalty);
+      this.tvm.endScope();
+      return this.tvm.sampleTopPFromLogits(this.logitsOnCPU, temperature, top_p);
     }
   }
 
-  async getInputTokens(input: PromptInput) {
-    this.kvCacheLength = 0
-    this.clearCache = true
+  private getInputTokens(): Array<number> {
+    let tokens: Array<number> = [];
+    let prompts;
+    // console.log('getInputTokens', this.conversation.messages.length, this.conversation.messages)
+    // beginning of the conversation
+    if (this.conversation.messages.length <= 2) {
+      if (this.conversation.config.add_bos) {
+        tokens = [this.bosTokenId];
+      }
+      prompts = this.conversation.getPromptArray();
+    } else {
+      prompts = this.conversation.getPrompArrayLastRound();
+    }
+    // keep system prompt when possible
+    tokens.push(...this.tokenizer.encode(prompts[0]));
 
-    let tokens = [this.bosTokenId]
-    const prompts = input.messages
-    prompts.push("ASSISTANT:")
+    let ctxLength = tokens.length;
+    let context = [];
 
-    tokens.push(...(await this.tokenizer.encode(prompts[0])))
-    let ctxLength = tokens.length
-    let context = []
-    let need_shift_window = false
+    // detect if we go out of the range
+    let needShiftWindow = false;
     for (let i = prompts.length - 1; i > 0; --i) {
-      const encoded = await this.tokenizer.encode(prompts[i])
-      ctxLength += encoded.length
-      if (
-        this.kvCacheLength + ctxLength + this.meanGenLength >=
-        this.maxWindowLength
-      ) {
-        console.log(
-          "shift calculation",
-          this.kvCacheLength,
-          ctxLength,
-          this.meanGenLength,
-          this.maxWindowLength
-        )
-        need_shift_window = true
-        break
+      const encoded = this.tokenizer.encode(prompts[i]);
+      ctxLength += encoded.length;
+      if (this.filledKVCacheLength + ctxLength + this.config.mean_gen_len >= this.maxWindowLength) {
+        // console.error('need shift window', this.filledKVCacheLength, ctxLength, this.config.mean_gen_len, this.maxWindowLength)
+        needShiftWindow = true;
+        break;
       }
-      context.unshift(encoded)
+      context.unshift(encoded);
     }
-    if (!need_shift_window) {
-      console.log("no need shift window", context)
+    if (!needShiftWindow) {
       for (const ctx of context) {
-        tokens.push(...ctx)
+        tokens.push(...ctx);
       }
-      return tokens
+      return tokens;
     }
+
     // need shift window and re-encode
     this.logger("need shift window")
-    this.kvCacheLength = 0
-    this.clearCache = true
+    this.filledKVCacheLength = 0;
+    this.fclearKVCaches(this.kvCache);
+
     // abandon all tokens we collected
-    tokens = [this.bosTokenId]
-    const all_prompts = input.messages
-    tokens.push(...(await this.tokenizer.encode(all_prompts[0])))
-    context = []
-    ctxLength = tokens.length
-    //only keep 10% of the window context
-    const fill_factor = 0.1
+    if (this.conversation.config.add_bos) {
+      tokens = [this.bosTokenId];
+    } else {
+      tokens = [];
+    }
+
+    const all_prompts = this.conversation.getPromptArray();
+    tokens.push(...this.tokenizer.encode(all_prompts[0]));
+    context = [];
+    ctxLength = tokens.length;
+    // only keep shift_fill_factor of the window context
     for (let i = all_prompts.length - 1; i > 0; --i) {
-      const encoded = this.tokenizer.encode(all_prompts[i])
-      ctxLength += encoded.length
-      if (
-        ctxLength >= fill_factor * this.maxWindowLength &&
-        i + 2 < all_prompts.length
-      ) {
-        break
+      const encoded = this.tokenizer.encode(all_prompts[i]);
+      ctxLength += encoded.length;
+      if (ctxLength >= this.config.shift_fill_factor * this.maxWindowLength && i + 2 < all_prompts.length) {
+        break;
       }
-      context.unshift(encoded)
+      context.unshift(encoded);
     }
     for (const ctx of context) {
-      tokens.push(...ctx)
+      tokens.push(...ctx);
     }
-    if (tokens.length + this.meanGenLength >= this.maxWindowLength) {
-      throw Error("Exceed max window length curr=" + tokens.length)
+    if (tokens.length + this.config.mean_gen_len >= this.maxWindowLength) {
+      throw Error("Exceed max window length curr=" + tokens.length);
     }
-    return tokens
+    return tokens;
   }
 
-  resetChat() {
-    // this.conversation.reset();
-    this.clearKVCache()
-    this.decodingTotalTime = 0
-    this.encodingTotalTime = 0
-    this.decodingTotalTokens = 0
-    this.encodingTotalTokens = 0
-  }
+  async evaluate() {
+    // run a canonical evaluation of the flow
+    this.fclearKVCaches(this.kvCache);
+    this.filledKVCacheLength = 0;
 
-  async generate(
-    input: RequestPrompt,
-    callbackUpdateResponse: any,
-    config: RequestOptions
-  ) {
-    this.resetChat()
-
-    const tokens = await this.getInputTokens(input)
-
-    const inputTokenLength = tokens.length
-
-    let outputPrompt = ""
-    if (this.clearCache) {
-      this.clearKVCache()
-      this.clearCache = false
-    }
-    const maxGenLen = this.maxWindowLength - tokens.length
-    if (maxGenLen < this.meanGenLength) {
-      throw Error("Too small window size config")
+    const testPrompt = "The capital of Canada is";
+    const ids = await this.tokenizer.encode(testPrompt);
+    const tokens = Array.from(ids);
+    tokens.unshift(this.bosTokenId);
+    if (tokens.length == 0) {
+      throw Error("empty token");
     }
 
-    let step = 0
-    for (
-      ;
-      step < maxGenLen &&
-      this.kvCacheLength + inputTokenLength + step < this.maxWindowLength;
-      ++step
-    ) {
-      this.tvm.beginScope()
-      var inputData
-      let tstart = performance.now()
-      if (step == 0) {
-        inputData = this.tvm.empty([1, tokens.length], "int32", this.device)
-        inputData.copyFrom(tokens)
-      } else {
-        inputData = this.tvm.empty([1, 1], "int32", this.device)
-        inputData.copyFrom(tokens.slice(tokens.length - 1))
-      }
-      const logits = this.tvm.detachFromCurrentScope(
-        this.forward(inputData, this.kvCacheLength + inputTokenLength + step)
-      )
-      this.tvm.endScope()
+    this.tvm.beginScope();
+    const inputData = this.tvm.empty([1, tokens.length], "int32", this.device);
+    inputData.copyFrom(tokens);
+    const prefillStart = performance.now();
+    this.forward(inputData, tokens.length);
+    this.tvm.endScope();
+    await this.device.sync();
 
-      const nextToken = await this.sampleTokenFromLogits(
-        logits,
-        input.temperature,
-        input.top_p || 0.95
-      )
-      logits.dispose()
+    const decodingStart = performance.now();
 
-      tokens.push(nextToken)
-      this.appeared_tokens.add(nextToken)
-      const outputTokens = tokens.slice(inputTokenLength)
-      outputPrompt = this.tokenizer.decode(outputTokens)
+    this.tvm.beginScope();
+    const firstSampleToken = this.tvm.empty([1, 1], "int32", this.device).copyFrom([6234]);
+    const logitsOnCPU = this.updateLogitsOnCPU(this.forward(firstSampleToken, tokens.length + 1));
+    await this.device.sync();
+    this.tvm.endScope();
 
-      if (nextToken == this.eosTokenId) break
+    const decodingEnd = performance.now();
+    const msg = (
+        `prefill-time=${((decodingStart - prefillStart) / 1000).toFixed(4)} sec` +
+        `decoding-time=${((decodingEnd - decodingStart) / 1000).toFixed(4)} sec`
+    );
 
-      const stopPos = outputPrompt.lastIndexOf("</s>")
-      if (stopPos != -1) {
-        outputPrompt = outputPrompt.substring(0, stopPos)
-        break
-      }
-      let tend = performance.now()
-      if (step != 0) {
-        this.decodingTotalTokens += 1
-        this.decodingTotalTime += (tend - tstart) / 1000
-      } else {
-        this.encodingTotalTime += (tend - tstart) / 1000
-        this.encodingTotalTokens += inputTokenLength
-      }
-
-      if (step % this.streamInterval == 0) {
-        callbackUpdateResponse(step, outputPrompt)
-      }
-    }
-    this.kvCacheLength += tokens.length - 1
-    // this.conversation.messages[this.conversation.messages.length - 1][1] = outputPrompt;
-    return outputPrompt
+    // simply log tokens for eyeballing.
+    // console.log("Logits:");
+    // console.log(logitsOnCPU.toArray());
+    // console.log(msg);
   }
 }
-
-export async function initTvm(
-  wasmUrl: string,
-  modelCacheUrl: string,
-  progressCallback: ({ progress: number }) => void
-) {
-  const wasmSource = await (await fetch(wasmUrl)).arrayBuffer()
-
-  const tvm = await instantiate(
-    new Uint8Array(wasmSource),
-    new EmccWASI(),
-    console.log
-  )
-  const output = await detectGPUDevice()
-  if (output !== undefined) {
-    let label = "WebGPU"
-    if (output.adapterInfo.description.length != 0) {
-      label += " - " + output.adapterInfo.description
-    } else {
-      label += " - " + output.adapterInfo.vendor
-    }
-    tvm.initWebGPU(output.device)
-  } else {
-    throw Error("This browser env do not support WebGPU")
-  }
-
-  // const initProgressCallback = (report) => {
-  //   if (config.setInitProgress) {
-  //     config.setInitProgress(Math.floor(report.progress * 100))
-  //   }
-  // }
-  tvm.registerInitProgressCallback(progressCallback)
-
-  await tvm.fetchNDArrayCache(modelCacheUrl, tvm.webgpu(), {
-    get: getFromParent,
-    put: (k: string, val: any) =>
-      window.parent.postMessage({ name: "cachePut", key: k, val }, "*")
-  })
-  return tvm
-}
-
-export async function initClient(tvm, tokenizer, config: any) {
-  return tvm.withNewScope(
-    () => new LLMChatPipeline(tvm, tokenizer, tvm.cacheMetadata, config)
-  )
-}
-
-export async function initTokenizer(config: any) {
-  // Initialize the LLMChatPipeline instance with required configs
-  // const sp = await (await sentencePieceProcessor)(config.tokenizerUrl)
-  const tJson = await (await fetch(config.tokenizerJson)).arrayBuffer()
-  return await Tokenizer.fromJSON(tJson)
-}
-
-export async function generateCompletion(
-  client: any,
-  input: RequestPrompt,
-  config: RequestOptions
-): Promise<string> {
-  const generated = await client.generate(
-    input,
-    async (i, completionPromise, t) => {
-      const completion = await completionPromise
-      window.parent.postMessage({ name: "streamResp", data: completion }, "*")
-    },
-    config
-  )
-  window.parent.postMessage({ name: "endStream" }, "*")
-
-  return generated
-}
-
-// export async function generate

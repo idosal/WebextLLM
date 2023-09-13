@@ -7,7 +7,8 @@ export function Dropdown<T>({
   choices,
   getLabel,
   onSelect,
-  showArrows
+  showArrows,
+    className
 }: {
   styled?: boolean
   children: React.ReactNode
@@ -15,6 +16,7 @@ export function Dropdown<T>({
   getLabel?: (choice: T) => string
   onSelect: (choice: T) => void
   showArrows: boolean
+  className?: string
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const getLabelOrDefault =
@@ -30,7 +32,7 @@ export function Dropdown<T>({
           "inline-flex justify-center w-full rounded-md px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 " +
           (styled
             ? "border shadow-sm text-amber-700 dark:text-white hover:bg-amber-200 hover:dark:bg-amber-700 border-amber-300 dark:border-amber-400 focus:ring-amber-500"
-            : "")
+            : "") + className
         }
         id="options-menu"
         aria-haspopup="true"

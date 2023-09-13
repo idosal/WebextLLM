@@ -81,7 +81,7 @@ function TransactionPermission({ transaction }: { transaction: Transaction }) {
       <Text dimming="more" size="lg">
         {originManager.originDisplay(transaction.origin)}
       </Text>
-      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+      <p className="mt-2 ml-10 mr-10 text-sm text-gray-600 dark:text-gray-400">
         This app is requesting permission to access {config?.label}
         {requestedModel && !isKnownModel(requestedModel)
           ? ` (${requestedModel})`

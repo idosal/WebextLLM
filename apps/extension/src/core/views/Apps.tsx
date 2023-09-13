@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import {useEffect, useRef, useState} from "react"
 
 import { NoActivity } from "~core/components/NoActivity"
 import { useInfiniteScroll } from "~core/components/hooks/useInfiniteScroll"
@@ -10,32 +10,46 @@ import type { Origin } from "~core/managers/origin"
 import { originManager } from "~core/managers/origin"
 
 import { AppsItem } from "./AppsItem"
+import { HorizontalMenu } from "~core/components/pure/HorizontalMenu";
 
-type Filter = "my-apps" | "trending" | "all"
+type Filter = "my-apps" | "trending"
 
 export function Apps() {
   const { objects, loading, appendNextPage } = originManager.useObjects(20)
   const [filter, setFilter] = useState<Filter>("my-apps")
   const [selectedApp, selectApp] = useState<Origin | undefined>()
-  const filteredApps = objects.filter((o) => filter === "my-apps")
+  const trendingApps = [{"id":"https://www.omnimodel.chat/","domain":"https://www.omnimodel.chat","path":"/","title":"Chatbot UI","permissions":"ask"},
+      {"id":"https://chat-vrm-window.vercel.app/","domain":"https://chat-vrm-window.vercel.app","path":"/","title":"ChatVRM","permissions":"ask"},
+      {"id":"https://play-chess-gpt.vercel.app/","domain":"https://play-chess-gpt.vercel.app","path":"/","title":"Chess GPT","permissions":"ask"},
+      {"id":"https://generative-agents-notebook-js.vercel.app/","domain":"https://generative-agents-notebook-js.vercel.app","path":"/","title":"Generative Agents Notebook Demo","permissions":"ask"},
+      {"id":"https://robot-companion.vercel.app/","domain":"https://robot-companion.vercel.app","path":"/","title":"Robot Companion with window.ai","permissions":"ask"}
+  ]
+  const filteredApps = filter === 'my-apps' ? objects : trendingApps
   const loaderRef = useRef<HTMLDivElement>(null)
 
   useInfiniteScroll(loaderRef, appendNextPage, objects.length > 0)
 
+  useEffect(() => {
+      if (!loading && objects.length === 0) {
+          setFilter('trending')
+      } else {
+          setFilter('my-apps')
+      }
+  }, [loading])
+
   return (
     <div>
-      {/* <HorizontalMenu<Filter>
+      <HorizontalMenu<Filter>
         className="absolute top-0 left-0 right-0"
         items={[
           { label: "My Apps", value: "my-apps" },
-          // { label: "Trending", value: "trending" },
-          { label: "All (coming soon)", value: "all" }
+          { label: "Trending", value: "trending" },
         ]}
         currentItem={filter}
         onItemSelect={(f) => setFilter(f)}
-      /> */}
+      />
 
-      {/* <div className="mb-8" /> */}
+      <div className="mb-8" />
 
       {filteredApps.map((origin: Origin) => (
         <AppsRow

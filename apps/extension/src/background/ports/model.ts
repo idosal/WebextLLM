@@ -18,23 +18,23 @@ const handler: PlasmoMessaging.PortHandler<
     return res.send(err(ErrorCode.InvalidRequest))
   }
 
-  const { id, request } = req.body
-  if (request) {
-    // TODO handle other model providers here by checking request.baseUrl
-    // TODO request the user's permission to add the model provider
-    const { session, shouldSetDefault } = request
-    const config =
-      (await configManager.forAuthAndModel(AuthType.External)) ||
-      await configManager.init(AuthType.External)
-    const newConfig = {
-      ...config,
-      session
-    }
-    await configManager.save(newConfig)
-    if (shouldSetDefault) {
-      await configManager.setDefault(newConfig)
-    }
-  }
+  const { id } = req.body
+  // if (request) {
+  //   // TODO handle other model providers here by checking request.baseUrl
+  //   // TODO request the user's permission to add the model provider
+  //   const { session, shouldSetDefault } = request
+  //   const config =
+  //     (await configManager.forAuthAndModel(AuthType.None)) ||
+  //     await configManager.init(AuthType.None)
+  //   const newConfig = {
+  //     ...config,
+  //     session
+  //   }
+  //   await configManager.save(newConfig)
+  //   if (shouldSetDefault) {
+  //     await configManager.setDefault(newConfig)
+  //   }
+  // }
 
   const config = await configManager.getDefault()
   res.send({

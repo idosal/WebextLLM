@@ -14,7 +14,7 @@ export function HorizontalMenu<T>({
   return (
     <div
       className={
-        "flex flex-row px-6 py-2 gap-4 bg-indigo-500 hover:bg-indigo-600 transition ease-in-out duration-100 text-white " +
+        "flex justify-around flex-row px-6 py-2 gap-4 bg-gray-600 text-white " +
         className
       }>
       {items.map((item) => (

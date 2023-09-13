@@ -1,25 +1,30 @@
-import { CheckBadgeIcon } from "@heroicons/react/24/outline"
-import { useEffect, useState } from "react"
-import { DotLoader } from "react-spinners"
-import { useChromeStorageSession } from "use-chrome-storage"
-
-import { useParams } from "~core/components/hooks/useParams"
-import { usePermissionPort } from "~core/components/hooks/usePermissionPort"
-import { Button } from "~core/components/pure/Button"
-import { Dropdown } from "~core/components/pure/Dropdown"
-import { Splitter } from "~core/components/pure/Splitter"
-import { Text } from "~core/components/pure/Text"
-import Tooltip from "~core/components/pure/Tooltip"
-import { Well } from "~core/components/pure/Well"
-import { AuthType, type Config, configManager } from "~core/managers/config"
-import { useConfig } from "~core/providers/config"
-import { objectEntries } from "~core/utils/utils"
-import { ModelID } from "~public-interface"
+import { StopCircleIcon, CheckBadgeIcon} from "@heroicons/react/24/outline";
+import { useEffect, useState } from "react";
+import { DotLoader } from "react-spinners";
+import { useChromeStorageSession } from "use-chrome-storage";
+import { useParams } from "~core/components/hooks/useParams";
+import { usePermissionPort } from "~core/components/hooks/usePermissionPort";
+import { Dropdown } from "~core/components/pure/Dropdown";
+import { Splitter } from "~core/components/pure/Splitter";
+import { Text } from "~core/components/pure/Text";
+import Tooltip from "~core/components/pure/Tooltip";
+import { Well } from "~core/components/pure/Well";
+import { AuthType, configManager } from "~core/managers/config";
+import { useConfig } from "~core/providers/config";
+import { ModelID } from "~public-interface";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { useNav } from "~core/providers/nav";
+import { useThemeDetector } from "~core/components/hooks/useThemeDetector";
 
 type ConfigSetting = { auth: AuthType; model?: ModelID }
 
 const configSettings: ConfigSetting[] = [
-  { auth: AuthType.None } // Native model
+  { auth: AuthType.None, model: ModelID.RedPajama },
+  { auth: AuthType.None, model: ModelID.WizardVicuna },
+  { auth: AuthType.None, model: ModelID.Llama213B },
+  { auth: AuthType.None, model: ModelID.StablePlatypus213Bf16 },
+  { auth: AuthType.None, model: ModelID.WizardCoder15Bf16 },
 ]
 
 export function Settings() {
@@ -28,11 +33,15 @@ export function Settings() {
   const { requestId } = useParams()
   const [apiKey, setApiKey] = useState("")
   const [url, setUrl] = useState("")
-  const [progress] = useChromeStorageSession("modelProgress", {
-    progress: 0,
-    timeElapsed: 0
+  const [progress, setProgress] = useChromeStorageSession(configManager.getCurrentModel(config) || '', {
+    progress: {
+      progress: 0,
+      timeElapsed: 0
+    },
   })
-  const [isCompatible, setIsCompatible] = useState(null)
+  const [compatibility, setCompatibility] = useState(null)
+  const { setHelpShown, setSettingsShown} = useNav()
+  const isDarkTheme = useThemeDetector();
 
   // Only show dropdown if there is no permission request
   // or if the permission request is for the default model
@@ -40,12 +49,56 @@ export function Settings() {
     !data || ("requester" in data && !data.requester.transaction.model)
 
   useEffect(() => {
-    setApiKey(config?.apiKey || "")
+    if (compatibility === null) {
+      return
+    }
+
+    let message = ''
+    if (!compatibility) {
+      message = 'Your browser does not support WebGPU. Click here for Help!'
+    } else if (config?.label.includes('-f16') && compatibility !== 'webgpu-f16') {
+      message = 'Your browser/GPU does not support f16 models. Click here for Help!'
+    } else if (!requestId) {
+        toast.dismiss()
+        return
+    } else {
+        return
+    }
+
+    toast.error(message, {
+      position: "bottom-center",
+      hideProgressBar: true,
+      autoClose: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: false,
+      theme: isDarkTheme ? "dark" : "light",
+    })
+  }, [config, compatibility])
+
+  useEffect(() => {
     setUrl(config?.baseUrl || "")
   }, [config])
 
   useEffect(() => {
-    if (config && progress?.progress === 1) {
+    if (!requestId) {
+      return
+    }
+
+    toast.info('Please wait until the model is ready before proceeding', {
+      position: "top-center",
+      hideProgressBar: true,
+      autoClose: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: false,
+      theme: isDarkTheme ? "dark" : "light",
+    })
+  }, [requestId])
+
+  useEffect(() => {
+    // console.log('progress', progress)
+    if (config && progress?.progress?.progress === 1) {
       config.downloaded = true
       setConfig(config)
       configManager
@@ -58,27 +111,37 @@ export function Settings() {
 
   useEffect(() => {
     if (!navigator.gpu) {
-      setIsCompatible(false)
+      setCompatibility('')
       return
     }
 
     navigator.gpu
-      .requestAdapter()
-      .then(() => {
-        setIsCompatible(true)
+      .requestAdapter({
+        powerPreference: "high-performance"
+      })
+      .then((a) => {
+        if (a.features.has('shader-f16')) {
+          setCompatibility('webgpu-f16')
+          return
+        }
+
+        setCompatibility('webgpu')
       })
       .catch((err) => {
         console.error(err)
-        setIsCompatible(false)
+        setCompatibility('')
       })
   })
 
   async function saveDefaultConfig(authType: AuthType, modelId?: ModelID) {
+    // console.error('saveDefaultConfig', authType, modelId)
     const config =
       (await configManager.forAuthAndModel(authType, modelId)) ||
       (await configManager.init(authType, modelId))
     await configManager.setDefault(config)
     setConfig(config)
+    setProgress({ progress: { progress: 0, timeElapsed: 0 } })
+    // configManager.getCaller(config)
   }
 
   async function saveAll() {
@@ -98,23 +161,37 @@ export function Settings() {
         Configuration
       </Text>
       <div className="my-3">
-        {requestId && (
-          <div className="bg-rose-700 text-white rounded-md py-4 px-6">
-            {config?.session && config.auth === AuthType.External
-              ? "Authentication error. Please sign in again."
-              : "Please wait until the model us configured before proceeding."}
-          </div>
-        )}
+        {/*{requestId && (*/}
+        {/*  <div className="bg-rose-700 text-white rounded-md py-4 px-6">*/}
+        {/*    {config?.session && config.auth === AuthType.External*/}
+        {/*      ? "Authentication error. Please sign in again."*/}
+        {/*      : "Please wait until the model is ready before proceeding."}*/}
+        {/*  </div>*/}
+        {/*)}*/}
       </div>
-      {isCompatible !== null && !isCompatible && (
-        <div className="bg-rose-700 text-white rounded-md py-4 px-6">
-          Your browser does not support WebGPU. Please see the About section.
-        </div>
-      )}
+      <ToastContainer
+          position="bottom-center"
+          newestOnTop={false}
+          onClick={() => {
+            setHelpShown(true)
+            setSettingsShown(false)
+          }}
+          rtl={false}
+          pauseOnFocusLoss
+          pauseOnHover
+          theme={isDarkTheme ? "dark" : "light"} />
       {showDefaultConfigDropdown && (
         <Well>
-          <div className="-my-3">
-            <Text strength="medium">Model</Text>
+          <div className="flex flex-row justify-between items-center -my-3">
+            <div>
+              <Text strength="medium">Model</Text>
+            </div>
+            <Tooltip align='left' content={"Stop completion"}>
+              <StopCircleIcon
+                  onClick={() => chrome.runtime.sendMessage({ type: "interrupt" })}
+                  className="h-5 w-5 text-gray-500 hover:text-gray-200"
+              />
+            </Tooltip>
           </div>
           <Splitter />
           <div className="flex flex-col items-center">
@@ -128,7 +205,8 @@ export function Settings() {
           </div>
           <Dropdown<ConfigSetting>
             styled
-            showArrows={false}
+            className='w-304'
+            showArrows={true}
             choices={configSettings}
             getLabel={(c) => {
               return configManager.getLabelForAuth(c.auth, c.model)
@@ -138,42 +216,56 @@ export function Settings() {
             }}>
             {config?.label}
           </Dropdown>
-          <br />
-          <div className="py-4 flex justify-center align-middle">
-            {progress?.progress === 1 ? (
-              // green hex
-              <CheckBadgeIcon
-                color="#66fadd"
-                style={{ width: "45px", height: "45px" }}
-              />
-            ) : (
-              <DotLoader
-                size={45}
-                color="#ececec"
-                loading={progress.progress !== 1}
-              />
-            )}
+          <div className="mt-3 text">
+            <Text align="center" size="xs" strength="medium">
+              Model size: {config?.size}GB; VRAM: {config?.vram}GB
+            </Text>
           </div>
-          {/*<br/>*/}
-          {progress?.progress ? (
-            <div style={{ marginTop: "10px" }}>
-              {progress?.progress === 1 ? (
-                <Text align="center" size="xs" strength="medium">
-                  The model is ready!
-                </Text>
-              ) : (
-                <Tooltip
-                  content={
-                    "First time will take a few minutes. Future initializations will be quick"
-                  }>
-                  <Text align="center" size="xs" strength="medium">
-                    Loading model: {(progress.progress * 100).toFixed(1)}%
-                    (elapsed: {progress.timeElapsed}s)
-                  </Text>
-                </Tooltip>
-              )}
-            </div>
-          ) : ''}
+          <div className="mt-3 text-amber-600 dark:text-amber-200">
+            <Text align="center" size="xs" strength="medium">
+              {config?.description}
+            </Text>
+          </div>
+          <br />
+          { compatibility !== null && compatibility && !(config?.label.includes('-f16') && compatibility !== 'webgpu-f16') && (
+              <>
+                <div className="py-4 flex justify-center align-middle">
+                  {progress?.progress?.progress === 1 ? (
+                      // green hex
+                      <CheckBadgeIcon
+                          color="#66fadd"
+                          style={{ width: "45px", height: "45px" }}
+                      />
+                  ) : (
+                      <DotLoader
+                          size={45}
+                          color={isDarkTheme ? "#dedede" : "#999999"}
+                          loading={progress?.progress?.progress !== 1}
+                      />
+                  )}
+                </div>
+                {progress?.progress ? (
+                    <div style={{ marginTop: "10px" }}>
+                      {progress?.progress?.progress === 1 ? (
+                          <Text align="center" size="xs" strength="medium">
+                            The model is ready!
+                          </Text>
+                      ) : (
+                          <Tooltip
+                              content={
+                                "First download will take a few minutes. Future initializations will be fast"
+                              }>
+                            <Text align="center" size="xs" strength="medium">
+                              Loading model: {(progress?.progress?.progress * 100).toFixed(1)}%
+                              (elapsed: {progress?.progress?.timeElapsed}s)
+                            </Text>
+                          </Tooltip>
+                      )}
+                    </div>
+                ) : ''}
+              </>
+            )
+          }
         </Well>
       )}
 
@@ -297,4 +389,3 @@ export function Settings() {
     </div>
   )
 }
-

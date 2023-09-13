@@ -2,7 +2,8 @@ import {
   Cog8ToothIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
-  ShieldExclamationIcon
+  ShieldExclamationIcon,
+    QuestionMarkCircleIcon
 } from "@heroicons/react/24/outline"
 import { useChromeStorageSession } from "use-chrome-storage"
 
@@ -15,8 +16,9 @@ export function NavBar() {
     view,
     setView,
     setSettingsShown,
-    setHelpShown,
-    setErrorShown,
+    setAboutShown,
+      setHelpShown,
+      setErrorShown,
     setDisclaimerShown
   } = useNav()
   const [error] = useChromeStorageSession("error", { message: "", stack: "" })
@@ -58,10 +60,16 @@ export function NavBar() {
         onClick={() => setDisclaimerShown(true)}>
         <ShieldExclamationIcon className="h-5 w-5" />
       </button>
-      <button
+    <button
         type="button"
         className="flex-none rounded-lg px-2 py-1 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700"
         onClick={() => setHelpShown(true)}>
+        <QuestionMarkCircleIcon className="h-5 w-5" />
+    </button>
+      <button
+        type="button"
+        className="flex-none rounded-lg px-2 py-1 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700"
+        onClick={() => setAboutShown(true)}>
         <InformationCircleIcon className="h-5 w-5" />
       </button>
       <button

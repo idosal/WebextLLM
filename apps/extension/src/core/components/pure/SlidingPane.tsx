@@ -26,7 +26,7 @@ export function SlidingPane({
           type="button"
           className="fixed right-0 top-0 px-4 py-4 text-lg text-gray-500 bg-gray-200/80 dark:bg-gray-800/80 hover:bg-gray-300 dark:hover:bg-gray-700"
           onClick={onHide}>
-          <XMarkIcon className="h-3 w-3" />
+          <XMarkIcon className="h-4 w-4" />
         </button>
       )}
       {children}

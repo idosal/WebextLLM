@@ -88,6 +88,6 @@ export type { EventRequest, EventResponse }
 export const IS_SERVER =
   typeof process !== "undefined" && process?.versions?.node
 
-// TODO keep in sync with Popup.tsx tailwind classes
-export const POPUP_HEIGHT = 512
-export const POPUP_WIDTH = 320
+// TODO keep in sync with Index.tsx tailwind classes
+export const POPUP_HEIGHT = 576
+export const POPUP_WIDTH = 384

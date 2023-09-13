@@ -5,7 +5,14 @@ import { Storage } from "@plasmohq/storage"
 
 import { PortName } from "~core/constants"
 import { Extension } from "~core/extension"
-import { native } from "~core/llm"
+import {
+  llama7b,
+  llama13b,
+  stableplatypus213bf16,
+  redpajama,
+  wizardcoder15bf16,
+  wizardvicuna
+} from "~core/llm"
 import { ModelID, isKnownModel } from "~public-interface"
 
 import { BaseManager } from "./base"
@@ -23,6 +30,9 @@ export interface Config {
   label: string
   baseUrl: string
   models: ModelID[]
+  size: number
+  vram: number
+  description: string
 
   modelCacheUrl?: string
   session?: { email?: string; expiresAt?: number }
@@ -52,18 +62,87 @@ class ConfigManager extends BaseManager<Config> {
 
   async init(auth: AuthType, modelId?: ModelID): Promise<Config> {
     const id = uuidv4()
-    const caller = await this.getCallerForAuth(auth, modelId)
+    // const caller = await this.getCallerForAuth(auth, modelId)
     const label = this.getLabelForAuth(auth, modelId)
-    switch (auth) {
-      case AuthType.None:
+
+    switch (modelId) {
+      case ModelID.WizardVicuna:
         return {
           id,
           auth,
           models: modelId ? [modelId] : [],
           modelCacheUrl:
-            "https://huggingface.co/spaces/idosal/web-llm/resolve/main/wizardlm-vicuna-7b-q4f32_0/",
+              "https://huggingface.co/spaces/idosal/web-llm/resolve/main/wizardlm-vicuna-7b-q4f32_0/",
           baseUrl: "",
-          label
+          label,
+          size: 4,
+          vram: 7.9,
+          description: 'Uncensored model with balanced system requirements'
+        }
+      case ModelID.RedPajama:
+        return {
+          id,
+          auth,
+          models: modelId ? [modelId] : [],
+          modelCacheUrl:
+              "https://huggingface.co/mlc-ai/mlc-chat-RedPajama-INCITE-Chat-3B-v1-q4f32_0/resolve/main/",
+          baseUrl: "",
+          label,
+          size: 1.7,
+          vram: 3.9,
+          description: 'Smallest model, for low-end devices'
+        }
+      case ModelID.Llama213B:
+        return {
+          id,
+          auth,
+          models: modelId ? [modelId] : [],
+          modelCacheUrl:
+              "https://huggingface.co/mlc-ai/mlc-chat-Llama-2-13b-chat-hf-q4f32_1/resolve/main/",
+          baseUrl: "",
+          description: 'Larger model with Bad performance. Prefer Stable-Platypus2-f16',
+          label,
+          size: 6.8,
+          vram: 9.9,
+        }
+      case ModelID.StablePlatypus213Bf16:
+        return {
+          id,
+          auth,
+          models: modelId ? [modelId] : [],
+          modelCacheUrl:
+              "https://huggingface.co/spaces/idosal/web-llm/resolve/main/Stable-Platypus2-13B-q4f16_1/",
+          baseUrl: "",
+          description: 'SotA model, for higher-end devices',
+          label,
+          size: 6.8,
+          vram: 9.9,
+        }
+      case ModelID.WizardCoder15Bf16:
+        return {
+          id,
+          auth,
+          models: modelId ? [modelId] : [],
+          modelCacheUrl:
+              "https://huggingface.co/mlc-ai/mlc-chat-WizardCoder-15B-V1.0-q4f16_1/resolve/main/",
+          baseUrl: "",
+          description: 'Strong programming model',
+          label,
+          size: 8.6,
+          vram: 10.3,
+        }
+      default:
+        return {
+          id,
+          auth,
+          models: modelId ? [modelId] : [],
+          modelCacheUrl:
+              "https://huggingface.co/mlc-ai/mlc-chat-RedPajama-INCITE-Chat-3B-v1-q4f32_0/resolve/main/",
+          baseUrl: "",
+          description: 'Smallest model, for low-end devices',
+          label,
+          size: 1.7,
+          vram: 3.9,
         }
     }
   }
@@ -83,7 +162,15 @@ class ConfigManager extends BaseManager<Config> {
     return isNew
   }
 
+  subscribe(callback: () => void): void {
+    // console.log('subscribe')
+    this.defaultConfig.watch({
+      'id': (callback),
+    })
+  }
+
   async forModel(modelId: ModelID): Promise<Config> {
+    // console.log('forModel', modelId)
     const configId = await this.modelHandlers.get(modelId)
     if (configId) {
       const config = await this.get(configId)
@@ -127,6 +214,7 @@ class ConfigManager extends BaseManager<Config> {
   }
 
   async getDefault(): Promise<Config> {
+    // console.log('get default')
     const id = (await this.defaultConfig.get("id")) as string | undefined
     if (id) {
       // this.defaultConfig.removeAll()
@@ -137,17 +225,19 @@ class ConfigManager extends BaseManager<Config> {
       await this.defaultConfig.remove("id")
     }
     // TODO switch to authtype external
-    return await this.init(AuthType.None)
+    return await this.init(AuthType.None, ModelID.RedPajama)
   }
 
   // TODO: allow multiple custom models
   async forModelWithDefault(model?: string): Promise<Config> {
-    if (!model) {
+    // console.log('unknown model', model)
+    if (!model || !isKnownModel(model)) {
       return this.getDefault()
     }
-    if (isKnownModel(model)) {
-      return this.forModel(model)
-    }
+
+    return this.forModel(model)
+
+
     // TEMP: Handle unknown models using one custom model
     // const configs = await this.filter({
     //   auth: AuthType.APIKey,
@@ -156,7 +246,6 @@ class ConfigManager extends BaseManager<Config> {
     // if (configs.length > 0) {
     //   return configs[0]
     // }
-    return await this.init(AuthType.None)
   }
 
   // Filtering for `null` looks for configs that don't have any models
@@ -189,33 +278,54 @@ class ConfigManager extends BaseManager<Config> {
     return forAuth[0]
   }
 
-  async getCallerForAuth(auth: AuthType, modelId?: ModelID) {
-    switch (auth) {
-      case AuthType.None:
-        return await native
+  getCallerForAuth(auth: AuthType, modelId?: ModelID) {
+    switch (modelId) {
+      case ModelID.WizardVicuna:
+        return wizardvicuna
+      case ModelID.RedPajama:
+        return redpajama
+      case ModelID.Llama213B:
+        return  llama13b
+      case ModelID.StablePlatypus213Bf16:
+        return stableplatypus213bf16
+      case ModelID.WizardCoder15Bf16:
+        return wizardcoder15bf16
       default:
-        return await native
+        return redpajama
     }
   }
 
   getLabelForAuth(auth: AuthType, modelId?: ModelID) {
     switch (auth) {
       case AuthType.None:
-        return "Wizard-Vicuna-7B-Uncensored"
+        switch (modelId) {
+          case ModelID.WizardVicuna:
+            return "Wizard-Vicuna-Uncensored-7B"
+          case ModelID.RedPajama:
+            return "RedPajama-3B"
+          case ModelID.Llama213B:
+            return "Llama-2-13B"
+          case ModelID.StablePlatypus213Bf16:
+            return "Stable-Platypus2-13B-f16"
+          case ModelID.WizardCoder15Bf16:
+            return "Wizard-Coder-15B-f16"
+          default:
+            return "RedPajama-3B"
+        }
       default:
         return "Native"
     }
   }
 
   async getCaller(config: Config) {
-    return await this.getCallerForAuth(
+    return this.getCallerForAuth(
       config.auth,
       this.getCurrentModel(config)
-    )
+    )()
   }
 
-  getCurrentModel(config: Config): ModelID | undefined {
-    // TODO: support multiple models per config
+  getCurrentModel(config?: Config): ModelID | undefined {
+    if (!config) return undefined
     if (config.models.length > 1) {
       return undefined
     }

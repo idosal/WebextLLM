@@ -26,33 +26,26 @@ export function Help() {
   return (
       <div className="flex flex-col text-gray-500 dark:text-gray-100">
         <Text size="lg" strength="bold">
-          About
+          Help
         </Text>
         <div className='mt-4'>
           <Well>
             <>
-              <Text size="xs">WebextLLM brings the generative AI revolution straight to your
-                browser!</Text>
-              <Text size="xs">Harness the power of local open-source LLMs to fuel a growing AI-based app ecosystem.</Text>
+              <Text strength='bold' size="xs">Missing WebGPU?</Text>
+              <Text size="xs">Update your browser and check webgpureport.org</Text>
               <br/>
-              <Text size="xs">Using WebextLLM, you have complete privacy as data never leaves your device. It also improves security and availability. Best of all, it's completely free to use (for both users and app developers)!</Text>
+              <Text strength='bold' size="xs">Failed to load a f16 model?</Text>
+              <Text size="xs">Currently, using fp16 in Chrome requires a command-line argument. Please update and launch your browser with `enable-dawn-features=allow_unsafe_apis`. For example, in MacOS:</Text>
+              <Text size="xs">/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --enable-dawn-features=allow_unsafe_apis</Text>
               <br/>
-              <Text size="xs">Running browser-native LLMs demands a capable device. Currently, the minimal requirement
-                is 6.5GB of GPU memory.</Text>
-              <Text size="xs">In case of errors, please try restarting the extension/browser. Contact us!</Text>
+              <Text strength='bold' size="xs">Download appears stuck? Extension resets?</Text>
+              <Text size="xs">First download will take minutes with a decent internet connection. Give it time, WebextLLM will self-heal by restarting. Future initializations will be much faster.</Text>
+              <br/>
+              <Text strength='bold' size="xs">Model crashes? Inference is slow?</Text>
+              <Text size="xs">Models are loaded into VRAM. As such, they demand a capable device (with emphasis on the GPU). Currently, the smallest model requires ~4GB VRAM. Prefer to use the f16 variants.</Text>
+              <br/>
+              <Text strength='bold' size="xs">In case of unrecoverable errors, please restart the extension and report the issue on Github.</Text>
             </>
-          </Well>
-        </div>
-        <div className="mt-3">
-          <Well>
-            <div className="flex flex-row justify-evenly">
-              <Link target='_blank' href='https://github.com/idosal/WebextLLM' title={'Github'}>
-                <GitHub className="w-6 h-6"/>
-              </Link>
-              <Link target='_blank' href='https://twitter.com/idosal1' title={'@idosal1'}>
-                <Twitter className="w-6 h-6"/>
-              </Link>
-            </div>
           </Well>
         </div>
       </div>

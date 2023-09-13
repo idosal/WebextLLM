@@ -1,26 +1,29 @@
 import { createProvider } from "puro"
-import { useContext, useEffect, useState } from "react"
+import { useContext, useState } from "react"
 
 export type NavView = "activity" | "apps"
 
 const useNavProvider = () => {
   const [view, setView] = useState<NavView>("activity")
   const [settingsShown, setSettingsShown] = useState(false)
-  const [helpShown, setHelpShown] = useState(false)
+  const [aboutShown, setAboutShown] = useState(false)
   const [errorShown, setErrorShown] = useState(false)
   const [disclaimerShown, setDisclaimerShown] = useState(false)
+  const [helpShown, setHelpShown] = useState(false)
 
   return {
     view,
     settingsShown,
-    helpShown,
+    aboutShown,
     setView,
     setSettingsShown,
-    setHelpShown,
+    setAboutShown,
     errorShown,
     setErrorShown,
     disclaimerShown,
-    setDisclaimerShown
+    setDisclaimerShown,
+    helpShown,
+    setHelpShown
   }
 }
 
