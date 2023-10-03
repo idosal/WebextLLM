@@ -24,7 +24,7 @@ function Index() {
       className={
         "bg-gray-200 dark:bg-gray-800" +
         " text-gray-900 dark:text-gray-200" +
-        " md:mx-auto p-0 w-[24rem] h-[546px]" + // 545
+        " md:mx-auto p-0 w-[24rem] h-[556px]" + // 545
         " text-sm font-sans"
       }>
       <NavProvider>

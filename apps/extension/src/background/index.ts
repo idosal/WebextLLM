@@ -9,6 +9,8 @@ const initializeModel = () => configManager.getDefault().then((config) => {
     // console.log("Default config", config)
     configManager.getCaller(config).then((caller) => {
         // console.log("Caller", caller)
+        chrome.action.setIcon({ path: config?.icon }).catch(console.error)
+
     }).catch((e) => {
         console.error("Caller error", e)
     })

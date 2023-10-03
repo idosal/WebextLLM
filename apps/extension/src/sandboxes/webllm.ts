@@ -87,13 +87,13 @@ function getConfig(model: ModelID): ModelConfig {
       conv_template: 'redpajama_chat'
 
     }
-  case ModelID.Llama213B:
+  case ModelID.NousHermes13B:
     return {
       modelCacheUrl:
-          "https://huggingface.co/mlc-ai/mlc-chat-Llama-2-13b-chat-hf-q4f32_1/resolve/main/",
-      tokenizerUrl: `${baseUrl}/assets/tokenizer.model`,
-      tokenizerJson: `${baseUrl}/assets/tokenizer.json`,
-      wasmUrl: `${baseUrl}/assets/Llama-2-13b-chat-hf-q4f32_1-webgpu.wasm`,
+          "https://huggingface.co/spaces/idosal/web-llm/resolve/main/Nous-Hermes2-13b-q4f32_0/",
+      tokenizerUrl: `${baseUrl}/assets/tokenizer_hermes.model`,
+      // tokenizerJson: `${baseUrl}/assets/tokenizer.json`,
+      wasmUrl: `${baseUrl}/assets/Nous-Hermes-Llama2-13b-q4f32_0-webgpu.wasm`,
       kvConfig: {
         numLayers: 64,
         shape: [32, 32, 128],
@@ -102,8 +102,42 @@ function getConfig(model: ModelID): ModelConfig {
       maxGenLength: 1024,
       meanGenLength: 128,
       maxWindowLength: 4096,
-      conv_template: 'llama-2'
+      conv_template: 'llama'
     }
+    case ModelID.NousHermes13Bf16:
+      return {
+        modelCacheUrl:
+            "https://huggingface.co/spaces/idosal/web-llm/resolve/main/Nous-Hermes-13b-q4f16_1/",
+        tokenizerUrl: `${baseUrl}/assets/tokenizer_hermes.model`,
+        // tokenizerJson: `${baseUrl}/assets/tokenizer.json`,
+        wasmUrl: `${baseUrl}/assets/Nous-Hermes-13b-q4f16_1-webgpu.wasm`,
+        kvConfig: {
+          numLayers: 64,
+          shape: [32, 32, 128],
+          dtype: "float32"
+        },
+        maxGenLength: 1024,
+        meanGenLength: 128,
+        maxWindowLength: 4096,
+        conv_template: 'llama'
+      }
+    case ModelID.Llama2AYT13Bf16:
+      return {
+        modelCacheUrl:
+            "https://huggingface.co/spaces/idosal/web-llm/resolve/main/Llama2-chat-AYT-13B-q4f16_1/",
+        tokenizerUrl: `${baseUrl}/assets/tokenizer.model`,
+        tokenizerJson: `${baseUrl}/assets/tokenizer_ayt.json`,
+        wasmUrl: `${baseUrl}/assets/Llama2-chat-AYT-13B-q4f16_1-webgpu.wasm`,
+        kvConfig: {
+          numLayers: 64,
+          shape: [32, 32, 128],
+          dtype: "float32"
+        },
+        maxGenLength: 1024,
+        mean_gen_len: 128,
+        maxWindowLength: 4096,
+        conv_template: 'llama'
+      }
   case ModelID.StablePlatypus213Bf16:
     return {
       modelCacheUrl:
@@ -119,7 +153,7 @@ function getConfig(model: ModelID): ModelConfig {
       maxGenLength: 1024,
       mean_gen_len: 128,
       maxWindowLength: 4096,
-      conv_template: 'wizard_coder_or_math'
+      conv_template: 'llama'
     }
     case ModelID.WizardCoder15Bf16:
       return {
@@ -137,6 +171,23 @@ function getConfig(model: ModelID): ModelConfig {
         mean_gen_len: 128,
         maxWindowLength: 4096,
         conv_template: 'wizard_coder_or_math'
+      }
+    case ModelID.TinyLlama11Bf16:
+      return {
+        modelCacheUrl:
+            "https://huggingface.co/spaces/idosal/web-llm/resolve/main/TinyLlama-1.1B-Chat-v0.1-q4f16_1/",
+        tokenizerUrl: `${baseUrl}/assets/tokenizer.mode`,
+        tokenizerJson: `${baseUrl}/assets/tokenizer_tiny.json`,
+        wasmUrl: `${baseUrl}/assets/TinyLlama-1.1B-Chat-v0.1-q4f16_1-webgpu.wasm`,
+        kvConfig: {
+          numLayers: 64,
+          shape: [32, 32, 128],
+          dtype: "float32"
+        },
+        maxGenLength: 1024,
+        mean_gen_len: 128,
+        maxWindowLength: 4096,
+        conv_template: 'tinyllama'
       }
   default:
     return {
@@ -195,8 +246,13 @@ async function initClient(tvm, tokenizer, config: any) {
 }
 
 async function initTokenizer(config: any) {
-  const tJson = await (await fetchRetry(config.tokenizerJson)).arrayBuffer()
-  return await Tokenizer.fromJSON(tJson)
+  if (config.tokenizerJson) {
+    const tJson = await (await fetchRetry(config.tokenizerJson)).arrayBuffer()
+    return await Tokenizer.fromJSON(tJson)
+  }
+
+  const tSp = await (await fetchRetry(config.tokenizerUrl)).arrayBuffer()
+  return await Tokenizer.fromSentencePiece(tSp)
 }
 
 async function initTvm(
@@ -356,7 +412,9 @@ window.addEventListener("message", async function (event) {
       await client.decodeStep()
       // console.log('final message', client.getMessage())
       progressCallback(counter, client.getMessage())
+      console.log(client.runtimeStatsText())
     }
+
 
     window.parent.postMessage({ name: "endStream" }, "*")
 

@@ -24,16 +24,7 @@ function connectWithRetry(portName: PortName): Port {
     connectWithRetry(portName)
   )
   ports[portName] = port
-  return port
-}
 
-;(Object.keys(ports) as PortName[]).forEach((portName) => {
-  if (portName === PortName.Permission) {
-    // Only used for background script
-    return
-  }
-  const port = connectWithRetry(portName)
-  // Handle responses from background script
   Extension.addPortListener<typeof portName, PortResponse>((msg) => {
     if (!("response" in msg)) {
       // TODO handle invalid requests
@@ -48,6 +39,17 @@ function connectWithRetry(portName: PortName): Port {
     }
     window.postMessage(res, "*")
   }, port)
+
+  return port
+}
+
+;(Object.keys(ports) as PortName[]).forEach((portName) => {
+  if (portName === PortName.Permission) {
+    // Only used for background script
+    return
+  }
+
+  connectWithRetry(portName)
 })
 
 // Listen to all other incoming messages as events

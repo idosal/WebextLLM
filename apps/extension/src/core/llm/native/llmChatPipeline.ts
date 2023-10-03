@@ -1,18 +1,8 @@
 import { default as deepEqual } from 'fast-deep-equal';
-
-
-
 import * as tvmjs from "~core/llm/native/tvm/index";
-
-
-
 import type { ChatConfig } from "./config";
 import { Conversation, getConversation } from "./conversation";
 import { Tokenizer } from "./tokenizer";
-
-
-
-
 
 export class LLMChatPipeline {
   private config: ChatConfig;
@@ -37,7 +27,7 @@ export class LLMChatPipeline {
   private bosTokenId = 1;
   private maxWindowLength;
   private resetStatsPerPrefill = true;
-  private stopStr: string;
+  private stopStr: string[];
   private stopTokens: Array<number>;
 
   // states
@@ -280,21 +270,24 @@ export class LLMChatPipeline {
    */
   private processNextToken(nextToken: number): void {
     if (this.stopTriggered) {
-      throw Error("Cannot call process when it is stoppped");
+      throw Error("Cannot call process when it is stopped");
     }
-
-    this.outputIds.push(nextToken);
-    this.appearedTokens.add(nextToken);
 
     // if there is a stop token
     if (this.stopTokens.includes(nextToken)) {
       // console.log('stop triggered stopTokens.includes', this.stopTokens, nextToken)
-
       this.stopTriggered = true;
+    } else {
+      this.outputIds.push(nextToken);
+      this.appearedTokens.add(nextToken);
     }
 
     let outputMessage = this.tokenizer.decode(new Int32Array(this.outputIds));
-    const stopPos = outputMessage.lastIndexOf(this.stopStr);
+    // console.log(outputMessage)
+
+    const stopPositions = this.stopStr.map((stopStr) => outputMessage.lastIndexOf(stopStr));
+    const stopPos = Math.max(...stopPositions);
+    // const stopPos = outputMessage.lastIndexOf(this.stopStr);
     if (stopPos != -1) {
       outputMessage = outputMessage.substring(0, stopPos);
       // console.log('stop triggered stopPos != -1', outputMessage)
@@ -303,7 +296,7 @@ export class LLMChatPipeline {
     this.outputMessage = outputMessage;
 
     if (this.stopTriggered) {
-      // console.log('finishing reply', this.conversation, this.outputMessage)
+      // console.log('finishing reply', this.outputMessage)
       this.conversation.finishReply(this.outputMessage);
     }
   }
@@ -375,7 +368,7 @@ export class LLMChatPipeline {
     let prompts;
     // console.log('getInputTokens', this.conversation.messages.length, this.conversation.messages)
     // beginning of the conversation
-    if (this.conversation.messages.length <= 2) {
+    if (this.conversation.messages.length <= 2 || !this.filledKVCacheLength) {
       if (this.conversation.config.add_bos) {
         tokens = [this.bosTokenId];
       }

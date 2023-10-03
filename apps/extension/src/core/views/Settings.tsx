@@ -1,4 +1,4 @@
-import { StopCircleIcon, CheckBadgeIcon} from "@heroicons/react/24/outline";
+import { XCircleIcon ,StopCircleIcon, CheckBadgeIcon, Battery0Icon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { DotLoader } from "react-spinners";
 import { useChromeStorageSession } from "use-chrome-storage";
@@ -20,9 +20,12 @@ import { useThemeDetector } from "~core/components/hooks/useThemeDetector";
 type ConfigSetting = { auth: AuthType; model?: ModelID }
 
 const configSettings: ConfigSetting[] = [
+  { auth: AuthType.None, model: ModelID.TinyLlama11Bf16 },
   { auth: AuthType.None, model: ModelID.RedPajama },
   { auth: AuthType.None, model: ModelID.WizardVicuna },
-  { auth: AuthType.None, model: ModelID.Llama213B },
+  { auth: AuthType.None, model: ModelID.NousHermes13B },
+  { auth: AuthType.None, model: ModelID.NousHermes13Bf16 },
+  { auth: AuthType.None, model: ModelID.Llama2AYT13Bf16 },
   { auth: AuthType.None, model: ModelID.StablePlatypus213Bf16 },
   { auth: AuthType.None, model: ModelID.WizardCoder15Bf16 },
 ]
@@ -39,9 +42,11 @@ export function Settings() {
       timeElapsed: 0
     },
   })
+  const [isActive] = useChromeStorageSession('active', false)
+  const [isAwake] = useChromeStorageSession('awake', false)
   const [compatibility, setCompatibility] = useState(null)
   const { setHelpShown, setSettingsShown} = useNav()
-  const isDarkTheme = useThemeDetector();
+  const isDarkTheme = useThemeDetector()
 
   // Only show dropdown if there is no permission request
   // or if the permission request is for the default model
@@ -139,9 +144,11 @@ export function Settings() {
       (await configManager.forAuthAndModel(authType, modelId)) ||
       (await configManager.init(authType, modelId))
     await configManager.setDefault(config)
+    toast.dismiss()
+    chrome.action.setBadgeText({ text: "" })
     setConfig(config)
     setProgress({ progress: { progress: 0, timeElapsed: 0 } })
-    // configManager.getCaller(config)
+    // chrome.action.setIcon({ path: config.icon }).catch(console.error)
   }
 
   async function saveAll() {
@@ -161,13 +168,6 @@ export function Settings() {
         Configuration
       </Text>
       <div className="my-3">
-        {/*{requestId && (*/}
-        {/*  <div className="bg-rose-700 text-white rounded-md py-4 px-6">*/}
-        {/*    {config?.session && config.auth === AuthType.External*/}
-        {/*      ? "Authentication error. Please sign in again."*/}
-        {/*      : "Please wait until the model is ready before proceeding."}*/}
-        {/*  </div>*/}
-        {/*)}*/}
       </div>
       <ToastContainer
           position="bottom-center"
@@ -186,21 +186,31 @@ export function Settings() {
             <div>
               <Text strength="medium">Model</Text>
             </div>
-            <Tooltip align='left' content={"Stop completion"}>
-              <StopCircleIcon
-                  onClick={() => chrome.runtime.sendMessage({ type: "interrupt" })}
-                  className="h-5 w-5 text-gray-500 hover:text-gray-200"
-              />
-            </Tooltip>
+            <div className="flex flex-row w-1/6 justify-end">
+              {isActive && <div className="mx-3">
+                <Tooltip alignLeft={true} alignTop={true} content={"Stop completion"}>
+                  <XCircleIcon
+                      onClick={() => chrome.runtime.sendMessage({ type: "interrupt" })}
+                      className="h-5 w-5 dark:text-gray-400 dark:hover:text-gray-200 text-gray-600 hover:text-gray-400"
+                  />
+                </Tooltip>
+              </div>}
+              {progress?.progress?.progress === 1 && <Tooltip alignLeft={true} alignTop={true} content={"Kill model"}>
+                <StopCircleIcon
+                    onClick={() => chrome.runtime.sendMessage({ type: "sleep" })}
+                    className="h-5 w-5 dark:text-gray-400 dark:hover:text-gray-200 text-gray-600 hover:text-gray-400"
+                />
+              </Tooltip>}
+            </div>
           </div>
           <Splitter />
           <div className="flex flex-col items-center">
             <img
-              src={chrome.runtime.getURL("assets/icon.png")}
-              width={100}
-              height={100}
+              src={config?.image}
+              width={125}
+              height={125}
               alt="webext llama"
-              className="flex-grow mt-3 mx-6 mb-5"
+              className="flex-grow mb-3"
             />
           </div>
           <Dropdown<ConfigSetting>
@@ -236,7 +246,10 @@ export function Settings() {
                           color="#66fadd"
                           style={{ width: "45px", height: "45px" }}
                       />
-                  ) : (
+                  ) : !isAwake ? <Battery0Icon
+                      // color="#66fadd"
+                      style={{ width: "45px", height: "45px" }}
+                  /> : (
                       <DotLoader
                           size={45}
                           color={isDarkTheme ? "#dedede" : "#999999"}
@@ -250,8 +263,17 @@ export function Settings() {
                           <Text align="center" size="xs" strength="medium">
                             The model is ready!
                           </Text>
-                      ) : (
+                      ) : !isAwake ?
                           <Tooltip
+                              content={
+                                "Wake it up by using an app!"
+                              }>
+                            <Text align="center" size="xs" strength="medium">
+                              The model is asleep 💤
+                            </Text>
+                          </Tooltip> : (
+                          <Tooltip
+                              alignTop={true}
                               content={
                                 "First download will take a few minutes. Future initializations will be fast"
                               }>
@@ -268,124 +290,6 @@ export function Settings() {
           }
         </Well>
       )}
-
-      {/*<div className="py-4">*/}
-      {/*  <Well>*/}
-      {/*    <div className="-my-3 flex flex-row justify-between">*/}
-      {/*      <Text strength="medium" dimming="less">*/}
-      {/*        Settings:*/}
-      {/*      </Text>*/}
-      {/*      {!showDefaultConfigDropdown && (*/}
-      {/*        <Text align="right" strength="medium" dimming="more">*/}
-      {/*          {config?.label}*/}
-      {/*        </Text>*/}
-      {/*      )}*/}
-      {/*    </div>*/}
-
-      {/*    <Splitter />*/}
-
-      {/*    <div>*/}
-      {/*      {asksForAPIKey && (*/}
-      {/*        <Input*/}
-      {/*          placeholder="API Key"*/}
-      {/*          value={apiKey || ""}*/}
-      {/*          onChange={(val) => setApiKey(val)}*/}
-      {/*          onBlur={saveAll}*/}
-      {/*        />*/}
-      {/*      )}*/}
-      {/*      {isExternal && <ExternalSettings config={config} />}*/}
-      {/*      <div className="mt-3"></div>*/}
-      {/*      {needsAPIKey && (*/}
-      {/*        <Text dimming="less" size="xs">*/}
-      {/*          {apiKey ? "Monitor your" : "Obtain an"} API key{" "}*/}
-      {/*          <a*/}
-      {/*            href={configManager.getExternalConfigURL(config)}*/}
-      {/*            target="_blank"*/}
-      {/*            className="font-bold"*/}
-      {/*            rel="noreferrer">*/}
-      {/*            here*/}
-      {/*          </a>{" "}*/}
-      {/*          <Tooltip*/}
-      {/*            content={*/}
-      {/*              <span>*/}
-      {/*                API keys are only stored in your browser. For OpenAI, you*/}
-      {/*                must have a paid account, otherwise your key will be*/}
-      {/*                rate-limited excessively.*/}
-      {/*                <br />*/}
-      {/*                <br />*/}
-      {/*                An API key is required for the OpenAI and Cohere models,*/}
-      {/*                but not for Together or Local (running on your computer).*/}
-      {/*              </span>*/}
-      {/*            }>*/}
-      {/*            <InformationCircleIcon className="w-3 inline -mt-1 opacity-50" />*/}
-      {/*          </Tooltip>*/}
-      {/*        </Text>*/}
-      {/*      )}*/}
-      {/*      {isOpenAIAPI && (*/}
-      {/*        <Text dimming="less" size="xs">*/}
-      {/*          Note: you must be on a{" "}*/}
-      {/*          <a*/}
-      {/*            href={"https://platform.openai.com/account/billing/overview"}*/}
-      {/*            target="_blank"*/}
-      {/*            className="font-bold"*/}
-      {/*            rel="noreferrer">*/}
-      {/*            paid account*/}
-      {/*          </a>*/}
-      {/*          .*/}
-      {/*        </Text>*/}
-      {/*      )}*/}
-      {/*      {isNativeModel && (*/}
-      {/*          <>*/}
-      {/*            <Text dimming="less" size="xs">*/}
-      {/*              Set up a native model in your browser{" "}*/}
-      {/*              <a*/}
-      {/*                  href={*/}
-      {/*                    "https://github.com/alexanderatallah/Alpaca-Turbo#using-the-api"*/}
-      {/*                  }*/}
-      {/*                  target="_blank"*/}
-      {/*                  className="font-bold"*/}
-      {/*                  rel="noreferrer">*/}
-      {/*                here*/}
-      {/*              </a>*/}
-      {/*              .*/}
-      {/*            </Text>*/}
-      {/*          </>*/}
-      {/*      )}*/}
-      {/*      {isLocalModel && (*/}
-      {/*        <Text dimming="less" size="xs">*/}
-      {/*          Set up Alpaca on your computer{" "}*/}
-      {/*          <a*/}
-      {/*            href={*/}
-      {/*              "https://github.com/alexanderatallah/Alpaca-Turbo#using-the-api"*/}
-      {/*            }*/}
-      {/*            target="_blank"*/}
-      {/*            className="font-bold"*/}
-      {/*            rel="noreferrer">*/}
-      {/*            here*/}
-      {/*          </a>*/}
-      {/*          .*/}
-      {/*        </Text>*/}
-      {/*      )}*/}
-      {/*      <Accordion title="Advanced" initiallyOpened={isLocalModel}>*/}
-      {/*        <Input*/}
-      {/*          placeholder="Base URL"*/}
-      {/*          type="url"*/}
-      {/*          name="base-url"*/}
-      {/*          value={url || config?.baseUrl || ""}*/}
-      {/*          onChange={(val) => setUrl(val)}*/}
-      {/*          onBlur={saveAll}*/}
-      {/*        />*/}
-      {/*        <label*/}
-      {/*          htmlFor={"base-url"}*/}
-      {/*          className="block text-xs font-medium opacity-60 mt-2">*/}
-      {/*          {isLocalModel*/}
-      {/*            ? "Use any base URL, including localhost."*/}
-      {/*            : "Optionally use this to set a proxy. Only change if you know what you're doing."}*/}
-      {/*        </label>*/}
-      {/*      </Accordion>*/}
-      {/*    </div>*/}
-      {/*  </Well>*/}
-      {/*</div>*/}
     </div>
   )
 }

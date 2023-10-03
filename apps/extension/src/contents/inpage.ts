@@ -158,7 +158,6 @@ function _relayRequest<PN extends PortName>(
   return requestId
 }
 
-// TODO figure out how to reclaim memory
 // `null` means all listen for all requests
 const _responseListeners = new Map<RequestID | null, Set<(data: any) => void>>()
 

@@ -3,11 +3,13 @@ import React, { useState } from "react"
 export function Tooltip({
   children,
   content,
-    align
+  alignLeft,
+  alignTop
 }: {
   children: React.ReactNode
   content: React.ReactNode
-  align?: "left" | "center"
+  alignLeft?: boolean,
+  alignTop?: boolean
 }) {
   const [visible, setVisible] = useState(false)
 
@@ -26,7 +28,7 @@ export function Tooltip({
       onMouseLeave={hideTooltip}>
       {children}
       {visible && (
-        <span className={`absolute z-10 ${align === 'left' ? 'right-2 ' : ''}transform -translate-y-20 transition-opacity duration-300 mt-2 p-3 w-fit bg-gray-900 text-amber-100 text-xs rounded-md shadow-lg`}>
+        <span className={`absolute z-10 ${alignLeft ? 'right-2 ' : ''}${alignTop ? 'transform -translate-y-20 ' : ''} transition-opacity duration-300 mt-2 p-3 w-fit bg-gray-900 text-amber-100 text-xs rounded-md shadow-lg`}>
           {content}
         </span>
       )}

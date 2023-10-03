@@ -17,6 +17,7 @@ export const Extension = {
     listener: (message: PE[PN], port: Port) => void,
     port?: Port
   ) {
+    log("Adding port listener", port?.name)
     if (port) {
       port.onMessage.addListener(listener)
     } else {
@@ -28,6 +29,7 @@ export const Extension = {
 
   connectToBackground(name: PortName, onDisconnect?: () => void): Port {
     const port = browser.runtime.connect({ name })
+    log("Connected to port", name)
     port.onDisconnect.addListener(() => {
       log("Disconnected from port", name)
       onDisconnect && onDisconnect()
@@ -36,6 +38,7 @@ export const Extension = {
   },
 
   connectToTab(tabId: number, onDisconnect?: () => void): Port {
+    log("Connected to tab", tabId)
     const port = browser.tabs.connect(tabId)
     port.onDisconnect.addListener(() => {
       console.info("Disconnected from tab", tabId)
@@ -47,6 +50,7 @@ export const Extension = {
   async getPortMessage<PN extends PortName, PE extends PortEvent>(
     port: Port
   ): Promise<PE[PN]> {
+  log("Getting message from port", port.name)
     return new Promise((resolve, reject) => {
       port.onMessage.addListener((event: PE[PN]) => {
         resolve(event)
@@ -62,6 +66,7 @@ export const Extension = {
     port: Port,
     wrapBody = true
   ) {
+    log("Sending message to port", port.name, data)
     port.postMessage(wrapBody ? { body: data } : data)
   },
 

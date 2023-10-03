@@ -22,7 +22,16 @@ export const redpajama = () => init(ModelID.RedPajama,
     }
 )
 
-export const llama13b = () => init(ModelID.Llama213B,
+export const noushermes13b = () => init(ModelID.NousHermes13B,
+    {
+        debug: shouldDebugModels
+    },
+    {
+        max_tokens: 4096
+    }
+)
+
+export const noushermes13bf16 = () => init(ModelID.NousHermes13Bf16,
     {
         debug: shouldDebugModels
     },
@@ -40,6 +49,15 @@ export const stableplatypus213bf16 = () => init(ModelID.StablePlatypus213Bf16,
     }
 )
 
+export const llama2ayt13bf16 = () => init(ModelID.Llama2AYT13Bf16,
+    {
+        debug: shouldDebugModels
+    },
+    {
+        max_tokens: 4096
+    }
+)
+
 export const wizardcoder15bf16 = () => init(ModelID.WizardCoder15Bf16,
     {
         debug: shouldDebugModels
@@ -48,4 +66,14 @@ export const wizardcoder15bf16 = () => init(ModelID.WizardCoder15Bf16,
         max_tokens: 4096
     }
 )
+
+export const tinyllama11b = () => init(ModelID.TinyLlama11Bf16,
+    {
+        debug: shouldDebugModels
+    },
+    {
+        max_tokens: 4096
+    }
+)
+
 

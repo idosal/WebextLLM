@@ -14,10 +14,10 @@ export function Error() {
         <Text size="lg" strength="bold">
           Errors
         </Text>
-        <Tooltip content={"Reload extension"}>
+        <Tooltip alignLeft={true} content={"Reload"}>
           <ArrowPathIcon
             onClick={() => chrome.runtime.reload()}
-            className="h-5 w-5 mr-9"
+            className="h-5 w-5 mr-9 text-gray-500 hover:text-gray-200"
           />
         </Tooltip>
       </div>

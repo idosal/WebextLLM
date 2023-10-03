@@ -1,16 +1,23 @@
 import { Mutex } from "async-mutex";
+import { configManager } from "~core/managers/config";
 import { ModelID } from "~public-interface";
 import type { ModelConfig, RequestOptions } from "../model";
 import { Model } from "../nmodel";
+
 import Reason = chrome.offscreen.Reason
-import {configManager} from "~core/managers/config";
 
 const mutex = new Mutex()
 const streamMutex = new Mutex()
 
 let progress = 0
 let initializedModel: Model
-let creating: Promise<void> | null// A global promise to avoid concurrency issues
+let creating: Promise<void> | null // A global promise to avoid concurrency issues
+
+async function killModel() {
+  const currentModel = configManager.getCurrentModel(await configManager.getDefault()) ?? ModelID.RedPajama
+  await chrome.offscreen.closeDocument()
+  await chrome.storage.session.set({[currentModel]: { progress: { progress: 0 } }, 'active': false, 'awake': false })
+}
 
 async function initRuntime() {
   try {
@@ -23,29 +30,23 @@ async function initRuntime() {
       await setupOffscreenDocument(currentModel)
 
       const terminateCallback = async (state: "active" | "locked" | "idle") => {
-        if (state !== "locked") {
+        if (state !== "locked" || progress !== 1) {
           return
         }
 
         progress = 0
-        await chrome.offscreen.closeDocument() // TODO send message to offscreen to unload the client
-        await chrome.storage.session.set({[currentModel]: { progress: { progress: 0 }}})
+        await killModel()
         chrome.idle.onStateChanged.removeListener(terminateCallback)
       }
 
       chrome.idle.onStateChanged.addListener(terminateCallback)
 
-      // if (progress !== 1) {
-      //   await new Promise((resolve) => {
-      //     chrome.storage.session.onChanged.addListener((v) => {
-      //       if (v[currentModel]?.newValue?.progress === 1)
-      //         self.setTimeout(resolve, 1000)
-      //     })
-      //   })
-      // }
+      await chrome.storage.session.set({ 'awake': true })
     })
+
   } catch (e) {
     console.error("Wizard failed to init runtime", e)
+    await chrome.storage.session.set({ 'awake': false })
   }
 }
 
@@ -75,10 +76,6 @@ async function initInternal(
   // console.log('initializing webllm', model)
   await chrome.storage.session.set({ currentModel: model })
 
-  // if (await chrome.offscreen.hasDocument()) {
-  //   await chrome.offscreen.closeDocument()
-  // }
-
   // TODO this method should return a different model when I switch in the dropdown so future streams will go there
   await initRuntime().catch((e) => console.error("Failed to init runtime", e))
 
@@ -92,6 +89,7 @@ async function initInternal(
         chrome.runtime.sendMessage(
           { type: "generate", input, config },
           (res) => {
+            chrome.storage.session.set({ 'active': false })
             chrome.action.setBadgeText({ text: "" })
 
             resolve(res)
@@ -105,6 +103,7 @@ async function initInternal(
     try {
       await streamMutex.waitForUnlock()
       return await streamMutex.runExclusive(async () => {
+        chrome.storage.session.set({ 'active': true })
         chrome.action.setBadgeText({ text: "w" })
         chrome.action.setBadgeBackgroundColor(
             { color: [0, 255, 0, 0] } // Green
@@ -114,7 +113,7 @@ async function initInternal(
 
         let controller: ReadableStreamDefaultController<string> | null = null
         let lastString = ""
-        return new ReadableStream<string>({
+        return await new ReadableStream<string>({
           start(controllerParam) {
             chrome.runtime.sendMessage({ type: "stream", input, config })
 
@@ -124,6 +123,7 @@ async function initInternal(
                 chrome.runtime.onMessage.removeListener(handler)
                 controller?.close()
 
+                chrome.storage.session.set({ 'active': false })
                 chrome.action.setBadgeText({ text: "" })
               }
 
@@ -132,7 +132,7 @@ async function initInternal(
               if (controller) {
                 const substr = res.data.data.substring(lastString.length)
                 // console.log('stream resp', substr, res.data.data, lastString)
-                if (substr.startsWith('<')) {
+                if (substr.startsWith('<') || substr.startsWith('###')) {
                   // console.log('skipping EOS', substr)
                   return
                 }
@@ -185,6 +185,14 @@ async function initInternal(
 
 let progressTOHandler: number | undefined = undefined
 
+chrome.runtime.onMessage.addListener(function (message, _) {
+  if (message.type !== 'sleep') return
+
+  chrome.runtime.sendMessage({ type: "interrupt" })
+
+  self.setTimeout(() => killModel().catch(err => console.error("Failed to kill model", err)), 500)
+})
+
 if (!self.location.href.endsWith('popup.html')) {
   chrome.runtime.onMessage.addListener( (message, _, sendResponse) => {
     if (message.type === "progress") {
@@ -197,15 +205,22 @@ if (!self.location.href.endsWith('popup.html')) {
         self.clearTimeout(progressTOHandler)
         progressTOHandler = undefined
         if (progress !== 1) {
-          progressTOHandler = self.setTimeout(() => chrome.runtime.reload(), 120000)
+          progressTOHandler = self.setTimeout(() => chrome.runtime.reload(), 150000)
         }
       })
     } else if (message.type === "error") {
-      console.error(message)
-      if (typeof message.data === 'string' && message.data?.startsWith('Cannot convert to array buffer') || message.data?.startsWith('Cannot fetch ')) {
+      const msg = message?.data?.message
+      if ((typeof msg) === 'string' && (msg.startsWith('This model requires WebGPU extension shader-f16'))) {
+        return
+      }
+
+      if ((typeof message.data) === 'string' && (message.data?.startsWith('Cannot convert to array buffer') || message.data?.startsWith('Cannot fetch '))) {
         window.setTimeout(() => chrome.runtime.reload(), 20000)
       }
 
+      console.error(msg)
+
+      chrome.storage.session.set({ 'active': false })
       chrome.action.setBadgeText({ text: "X" })
       chrome.action.setBadgeBackgroundColor(
           { color: [255, 0, 0, 255] } // red
@@ -229,7 +244,7 @@ async function setupOffscreenDocument(model: ModelID) {
     documentUrls: [offscreenUrl]
   })
 
-  if (existingContexts.length > 0) {
+  if (existingContexts.length > 0 && !(await chrome.storage.session.get('error'))?.error) {
     // console.log("offscreen already exists")
     if (progress === 1) return
     let storedProgress = (await chrome.storage.session.get(model))[model]
@@ -265,6 +280,7 @@ async function setupOffscreenDocument(model: ModelID) {
 
   if (await chrome.offscreen.hasDocument()) {
     // console.log('closing unrelated offscreen document')
+    await chrome.storage.session.remove('error')
     await chrome.offscreen.closeDocument()
   }
 

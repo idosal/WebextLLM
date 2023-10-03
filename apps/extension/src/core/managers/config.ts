@@ -1,17 +1,17 @@
 import { v4 as uuidv4 } from "uuid"
 import { EventType } from "window.ai"
-
 import { Storage } from "@plasmohq/storage"
-
 import { PortName } from "~core/constants"
 import { Extension } from "~core/extension"
 import {
-  llama7b,
-  llama13b,
+  noushermes13b,
   stableplatypus213bf16,
   redpajama,
   wizardcoder15bf16,
-  wizardvicuna
+  wizardvicuna,
+  tinyllama11b,
+  llama2ayt13bf16,
+  noushermes13bf16
 } from "~core/llm"
 import { ModelID, isKnownModel } from "~public-interface"
 
@@ -33,7 +33,8 @@ export interface Config {
   size: number
   vram: number
   description: string
-
+  icon: string
+  image: string
   modelCacheUrl?: string
   session?: { email?: string; expiresAt?: number }
   apiKey?: string
@@ -75,9 +76,11 @@ class ConfigManager extends BaseManager<Config> {
               "https://huggingface.co/spaces/idosal/web-llm/resolve/main/wizardlm-vicuna-7b-q4f32_0/",
           baseUrl: "",
           label,
+          icon: chrome.runtime.getURL('assets/wizardvicuna_icon.png'),
+          image: chrome.runtime.getURL('assets/wizardvicuna.png'),
           size: 4,
           vram: 7.9,
-          description: 'Uncensored model with balanced system requirements'
+          description: 'Uncensored model with a good balance of quality and system requirements'
         }
       case ModelID.RedPajama:
         return {
@@ -88,20 +91,39 @@ class ConfigManager extends BaseManager<Config> {
               "https://huggingface.co/mlc-ai/mlc-chat-RedPajama-INCITE-Chat-3B-v1-q4f32_0/resolve/main/",
           baseUrl: "",
           label,
+          icon: chrome.runtime.getURL('assets/icon_icon.png'),
+          image: chrome.runtime.getURL('assets/icon.png'),
           size: 1.7,
           vram: 3.9,
-          description: 'Smallest model, for low-end devices'
+          description: 'Small model; Low-end devices should prefer TinyLlama (significantly lighter)'
         }
-      case ModelID.Llama213B:
+      case ModelID.NousHermes13B:
         return {
           id,
           auth,
           models: modelId ? [modelId] : [],
           modelCacheUrl:
-              "https://huggingface.co/mlc-ai/mlc-chat-Llama-2-13b-chat-hf-q4f32_1/resolve/main/",
+              "https://huggingface.co/spaces/idosal/web-llm/resolve/main/Nous-Hermes2-13b-q4f32_0/",
           baseUrl: "",
-          description: 'Larger model with Bad performance. Prefer Stable-Platypus2-f16',
+          description: 'Larger and more creative model. Prefer f16 for performance',
           label,
+          icon: chrome.runtime.getURL('assets/hermes_icon.png'),
+          image: chrome.runtime.getURL('assets/hermes.png'),
+          size: 7.6,
+          vram: 13.2,
+        }
+      case ModelID.NousHermes13Bf16:
+        return {
+          id,
+          auth,
+          models: modelId ? [modelId] : [],
+          modelCacheUrl:
+              "https://huggingface.co/spaces/idosal/web-llm/resolve/main/Nous-Hermes2-13b-q4f16_1/",
+          baseUrl: "",
+          description: 'Large and creative model; Slightly worse than Stable-Platypus2 and Llama2-AYT',
+          label,
+          icon: chrome.runtime.getURL('assets/hermes_icon.png'),
+          image: chrome.runtime.getURL('assets/hermes.png'),
           size: 6.8,
           vram: 9.9,
         }
@@ -114,6 +136,23 @@ class ConfigManager extends BaseManager<Config> {
               "https://huggingface.co/spaces/idosal/web-llm/resolve/main/Stable-Platypus2-13B-q4f16_1/",
           baseUrl: "",
           description: 'SotA model, for higher-end devices',
+          icon: chrome.runtime.getURL('assets/platypus_icon.png'),
+          image: chrome.runtime.getURL('assets/platypuscut.png'),
+          label,
+          size: 6.8,
+          vram: 9.9,
+        }
+      case ModelID.Llama2AYT13Bf16:
+        return {
+          id,
+          auth,
+          models: modelId ? [modelId] : [],
+          modelCacheUrl:
+              "https://huggingface.co/spaces/idosal/web-llm/resolve/main/Llama2-chat-AYT-13B-q4f16_1/",
+          baseUrl: "",
+          description: 'SotA model, for higher-end devices',
+          icon: chrome.runtime.getURL('assets/llama2_ayt_icon.png'),
+          image: chrome.runtime.getURL('assets/llama2_ayt.png'),
           label,
           size: 6.8,
           vram: 9.9,
@@ -128,8 +167,25 @@ class ConfigManager extends BaseManager<Config> {
           baseUrl: "",
           description: 'Strong programming model',
           label,
+          icon: chrome.runtime.getURL('assets/wizardcoder_icon.png'),
+          image: chrome.runtime.getURL('assets/wizardcoder.png'),
           size: 8.6,
           vram: 10.3,
+        }
+      case ModelID.TinyLlama11Bf16:
+        return {
+          id,
+          auth,
+          models: modelId ? [modelId] : [],
+          modelCacheUrl:
+              "https://huggingface.co/spaces/idosal/web-llm/resolve/main/TinyLlama-1.1B-Chat-v0.1-q4f16_1/",
+          baseUrl: "",
+          description: 'Smallest model, for low-end devices',
+          label,
+          icon: chrome.runtime.getURL('assets/tinyllama_icon.png'),
+          image: chrome.runtime.getURL('assets/tinyllama.png'),
+          size: 0.6,
+          vram: 1.7,
         }
       default:
         return {
@@ -139,8 +195,10 @@ class ConfigManager extends BaseManager<Config> {
           modelCacheUrl:
               "https://huggingface.co/mlc-ai/mlc-chat-RedPajama-INCITE-Chat-3B-v1-q4f32_0/resolve/main/",
           baseUrl: "",
-          description: 'Smallest model, for low-end devices',
+          description: 'Small model; Low-end devices should prefer TinyLlama (much smaller but slightly worse)',
           label,
+          icon: chrome.runtime.getURL('assets/icon_icon.png'),
+          image: chrome.runtime.getURL('assets/icon.png'),
           size: 1.7,
           vram: 3.9,
         }
@@ -188,9 +246,6 @@ class ConfigManager extends BaseManager<Config> {
   }
 
   isCredentialed(config: Config): boolean {
-    // if (!config.baseUrl) {
-    //   return false
-    // }
     switch (config.auth) {
       case AuthType.None:
         return config?.downloaded || false
@@ -236,16 +291,6 @@ class ConfigManager extends BaseManager<Config> {
     }
 
     return this.forModel(model)
-
-
-    // TEMP: Handle unknown models using one custom model
-    // const configs = await this.filter({
-    //   auth: AuthType.APIKey,
-    //   model: null
-    // })
-    // if (configs.length > 0) {
-    //   return configs[0]
-    // }
   }
 
   // Filtering for `null` looks for configs that don't have any models
@@ -284,12 +329,18 @@ class ConfigManager extends BaseManager<Config> {
         return wizardvicuna
       case ModelID.RedPajama:
         return redpajama
-      case ModelID.Llama213B:
-        return  llama13b
+      case ModelID.NousHermes13B:
+        return  noushermes13b
+      case ModelID.NousHermes13Bf16:
+        return  noushermes13bf16
       case ModelID.StablePlatypus213Bf16:
         return stableplatypus213bf16
+      case ModelID.Llama2AYT13Bf16:
+        return llama2ayt13bf16
       case ModelID.WizardCoder15Bf16:
         return wizardcoder15bf16
+      case ModelID.TinyLlama11Bf16:
+        return tinyllama11b
       default:
         return redpajama
     }
@@ -303,12 +354,18 @@ class ConfigManager extends BaseManager<Config> {
             return "Wizard-Vicuna-Uncensored-7B"
           case ModelID.RedPajama:
             return "RedPajama-3B"
-          case ModelID.Llama213B:
-            return "Llama-2-13B"
+          case ModelID.NousHermes13B:
+            return "Nous-Hermes-13B"
+            case ModelID.NousHermes13Bf16:
+            return "Nous-Hermes-13B-f16"
           case ModelID.StablePlatypus213Bf16:
             return "Stable-Platypus2-13B-f16"
+          case ModelID.Llama2AYT13Bf16:
+            return "Llama2-AYT-13B-f16"
           case ModelID.WizardCoder15Bf16:
             return "Wizard-Coder-15B-f16"
+          case ModelID.TinyLlama11Bf16:
+            return "TinyLlama-1.1B-f16"
           default:
             return "RedPajama-3B"
         }

@@ -42,7 +42,7 @@ export function Help() {
               <Text size="xs">First download will take minutes with a decent internet connection. Give it time, WebextLLM will self-heal by restarting. Future initializations will be much faster.</Text>
               <br/>
               <Text strength='bold' size="xs">Model crashes? Inference is slow?</Text>
-              <Text size="xs">Models are loaded into VRAM. As such, they demand a capable device (with emphasis on the GPU). Currently, the smallest model requires ~4GB VRAM. Prefer to use the f16 variants.</Text>
+              <Text size="xs">Models are loaded into VRAM. As such, they demand a capable device (with emphasis on the GPU). Currently, the smallest model requires ~1.7GB VRAM. Prefer to use the f16 variants.</Text>
               <br/>
               <Text strength='bold' size="xs">In case of unrecoverable errors, please restart the extension and report the issue on Github.</Text>
             </>

@@ -1,19 +1,19 @@
 import { KeyIcon } from "@heroicons/react/24/solid"
 import { useEffect } from "react"
-
 import { Accordion } from "~core/components/pure/Accordion"
 import { Button } from "~core/components/pure/Button"
 import { Dropdown } from "~core/components/pure/Dropdown"
 import { Text } from "~core/components/pure/Text"
 import type { PortResponse } from "~core/constants"
 import { PortName } from "~core/constants"
-import { AuthType, configManager } from "~core/managers/config"
+import { configManager } from "~core/managers/config"
 import { originManager } from "~core/managers/origin"
 import type { Transaction } from "~core/managers/transaction"
 import { transactionManager } from "~core/managers/transaction"
 import { useConfig } from "~core/providers/config"
 import { useNav } from "~core/providers/nav"
 import { isKnownModel } from "~public-interface"
+import {useChromeStorageSession} from "use-chrome-storage";
 
 export function PermissionRequest({
   data,
@@ -28,8 +28,7 @@ export function PermissionRequest({
       : [data.requester.transaction, undefined]
 
   return (
-    // TODO figure out why hfull doesn't work
-    <div className="flex flex-col h-[92%]">
+    <div className="flex flex-col h-[95%]">
       <div className="flex-auto flex flex-col overflow-y-auto overflow-x-hidden items-center justify-center">
         <div className="flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-900">
           <KeyIcon className="w-8 h-8 text-gray-500 dark:text-gray-400" />
@@ -63,6 +62,12 @@ function TransactionPermission({ transaction }: { transaction: Transaction }) {
   const { setSettingsShown } = useNav()
   const { config, setConfig } = useConfig()
   const { object, setObject } = originManager.useObject(transaction.origin.id)
+    const [progress] = useChromeStorageSession(configManager.getCurrentModel(config) || '', {
+        progress: {
+            progress: 0,
+            timeElapsed: 0
+        },
+    })
   const requestedModel = transaction.model
 
   useEffect(() => {
@@ -75,6 +80,14 @@ function TransactionPermission({ transaction }: { transaction: Transaction }) {
     }
     checkConfig()
   }, [requestedModel])
+
+    useEffect(() => {
+        if (progress?.progress?.progress !== 1) {
+            return
+        }
+
+        setSettingsShown(false)
+    }, [progress])
 
   return (
     <div className="flex flex-col items-center text-center">
@@ -92,6 +105,8 @@ function TransactionPermission({ transaction }: { transaction: Transaction }) {
           {JSON.stringify(transactionManager.formatJSON(transaction), null, 2)}
         </code>
       </Accordion>
+        <br/>
+        <p>Should we ask for permission?</p>
       <Dropdown
         choices={["ask", "allow"] as const}
         showArrows={true}
@@ -102,8 +117,8 @@ function TransactionPermission({ transaction }: { transaction: Transaction }) {
           })
         }>
         {object?.permissions === "allow"
-          ? "Always allow this site?"
-          : "Always ask permission for this site?"}
+          ? "Always allow this site"
+          : "Always ask permission for this site"}
       </Dropdown>
     </div>
   )
