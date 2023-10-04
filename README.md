@@ -185,10 +185,7 @@ export enum ErrorCode {
 
 ## Available apps
 
-Explore apps that use the `window.ai` API:
-- After installing the extension, visit the Apps tab in its popup.
-
-- [Window.ai Discord #app-showcase channel](https://discord.gg/6kMeRxc2T)
+After installing the extension, visit the Apps tab in its popup to find supported apps that use `window.ai`.
 
 
 ## On the horizon
