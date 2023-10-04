@@ -1,6 +1,6 @@
 # WebextLLM - browser-native LLMs at your fingertips
 
-<p align="center"><img height="90%" width="90%" src="https://github.com/idosal/WebextLLM/assets/18148989/de2c65fb-7d83-4452-8718-081b6f0826a3"</img></p>
+<p align="center"><img height="90%" width="90%" src="https://github.com/idosal/WebextLLM/assets/18148989/e78d6b2c-1625-4658-ae18-966441cf7b6e"</img></p>
 
 <div align="center">
 
@@ -18,7 +18,7 @@ The extension simplifies integrating AI into web applications by taking ownershi
 Users enjoy an exciting combination of freedom, privacy, and security. Harness browser-native LLMs to fuel a growing AI-based application ecosystem as a user, developer, or model provider.
 
 
-https://github.com/idosal/WebextLLM/assets/18148989/d18e23b5-5c2e-43d6-b45a-9db789fd30a2
+https://github.com/idosal/WebextLLM/assets/18148989/2ac3586c-eeee-4404-8864-b13e879def19
 
 
 ### Key Features
@@ -196,7 +196,7 @@ After installing the extension, visit the Apps tab in its popup to find supporte
 ## Setup
 
 There are two setup options:
-1. Install the extension from the [Chrome Web Store](https://chrome.google.com/webstore/chbepdchbogmcmhilpfmijbkfpplgnoh) (recommended)
+1. Install the extension from the [Chrome Web Store](https://chrome.google.com/webstore/detail/webextllm/chbepdchbogmcmhilpfmijbkfpplgnoh) (recommended)
 2. Build the extension yourself (see [how](#contributing))
 
 
