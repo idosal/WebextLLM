@@ -1,8 +1,6 @@
 # WebextLLM - browser-native LLMs at your fingertips
 
-<!-- ![image](https://github.com/idosal/WebextLLM/assets/18148989/53ba62c8-9e6a-441e-8e29-a1bf18d3c646)
- -->
-<p align="center"><img height="30%" width="30%" src="https://github.com/idosal/WebextLLM/assets/18148989/53ba62c8-9e6a-441e-8e29-a1bf18d3c646"</img></p>
+<p align="center"><img height="90%" width="90%" src="https://github.com/idosal/WebextLLM/assets/18148989/de2c65fb-7d83-4452-8718-081b6f0826a3"</img></p>
 
 <div align="center">
 
@@ -13,29 +11,35 @@
 
 --------------------------
 
+[WebextLLM](https://chrome.google.com/webstore/detail/chbepdchbogmcmhilpfmijbkfpplgnoh) is a [browser extension](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions) created to democratize AI. 
 
-*Unleash the power of AI in your browser!*
+The extension simplifies integrating AI into web applications by taking ownership of LLM management and local deployment so that developers don't need to embed them in their apps. Instead, the extension makes local LLMs accessible to them by injecting a simple and lightweight Javascript API (based on and mostly compliant with the [window.ai](https://github.com/alexanderatallah/window.ai)) into all web pages. This brings the traditional cloud-backed development paradigm to the edge!
+
+Users enjoy an exciting combination of freedom, privacy, and security. Harness browser-native LLMs to fuel a growing AI-based application ecosystem as a user, developer, or model provider.
 
 
-WebextLLM is the first extension in the Chrome Web Store to embed local open-source LLMs in the browser.
-Harness browser-native LLMs to fuel a growing AI-based application ecosystem (based on and mostly-compliant with the [window.ai](https://github.com/alexanderatallah/window.ai) API), as a user, developer, or model provider.
+https://github.com/idosal/WebextLLM/assets/18148989/d18e23b5-5c2e-43d6-b45a-9db789fd30a2
 
-https://github.com/idosal/WebextLLM/assets/18148989/1f1df430-0fad-4233-b53c-3047bec26d5e
 
+### Key Features
+* **AI-enablement** - WextLLM provides browser-native LLM capabilities to AI-powered web apps through a simple API, enabling edge computing and easy adoption.
+* **Ownership** - Users have full control over LLM selection, from uncensored to fine-tuned models, offering an unrestricted experience free from quotas or cloud dependencies.
+* **Privacy and security** - User data stays on the device, ensuring privacy, and LLM instructions remain tamper-proof at the network level.
+* **Cost savings** - Running LLMs locally eliminates cloud service costs, saving users significant money, particularly in applications with high per-prompt expenses.
+* **Control** - Users can grant or deny permission to any application, maintaining complete control over access to their LLMs at all times.
 
 ### Why should I use WebextLLM?
-There are several main advantages to the extension over other solutions. It's:
 - **Free** - The model runs on your hardware, eliminating the need for costly service providers
 - **Private** - Your data remains securely on your device, safeguarding your privacy
 - **Unlimited** - Take full control of the model without any quotas, censorship, or limitations
 - **Highly available** - Overcome limitations of internet connectivity and cloud-based LLM availability
 
 ### Why should I develop applications using WebextLLM (window.ai)?
-- **Ease of use** - The `window.ai API` is designed to be simple, working seamlessly with any JavaScript application. No complex SDKs or framework-specific wrappers required.
-- **Free** - Say goodbye to cloud LLM costs and enjoy the benefits of a cost-free solution
+- **Ease of use** - The `window.ai API` is designed to be simple, working seamlessly with any JavaScript application. No complex SDKs or framework-specific wrappers are required.
 - **Unlimited** - Break free from API quotas and limits, enabling you to unlock the full potential of your applications
-- **Existing user base** - Tap into a rapidly growing ecosystem of users and developers utilizing `window.ai`
-- **Liability** - Empower your users to decide which model they want to use, giving them full control and ownership
+- **Access to a growing ecosystem** - Tap into an expanding community of users and developers leveraging AI in the browser.
+- **Empower users** - Empower your users to decide which model they want to use, giving them full control and ownership
+
 
 <!-- ### Contents
 - [On the horizon](#on-the-horizon)
@@ -52,27 +56,15 @@ There are several main advantages to the extension over other solutions. It's:
 - [Contributing](#contributing)
 - [Disclaimer](#disclaimer) -->
 
-## Features
-
-* Own your models: Experience the freedom of owning and controlling the LLMs, enjoying a limitless, private, and secure environment.
-* Control: Exercise complete control over access to your LLM, granting or denying permission to any application at any time.
-* Visibility: Gain insights into the history of prompts and responses to your model across different applications.
-
-## On the horizon
-- [ ] Make it easy to add new models
-- [ ] Lower minimum requirements to make it accessible to all
-- [ ] Make it easier to format responses
-- [ ] Add support for more browsers
 
 ## Getting started
 ### As a user
 
 1. Install the extension from the Chrome Web Store (recommended) or build it yourself (see [how](#🧠-local-model-setup)).
-2. In the `Configuration` tab, verify that the model is ready for use ([wizard-vicuna-7b-uncensored](https://huggingface.co/ehartford/Wizard-Vicuna-7B-Uncensored)). The model weighs ~4GB that need to be downloaded once (on first use). The model is then cached so future initializations will be much quicker (and offline).
-3. Navigate to an application that utilizes `window.ai` (see [apps](#👀-find-apps)).
+2. In the `Configuration` tab, verify that the selected model is ready for use. The model weighs ~1.9GB which need to be downloaded once (on first use). The model is then cached so future initializations will be much quicker (and offline).
+3. Navigate to an application that utilizes `window.ai` (see the Apps tab in the extension's popup).
 4. Approve the application's request to use the model (you may choose to grant unlimited access to the application).
-5. ??? 
-6. Profit
+5. Enjoy private, secure, and free AI in your apps!
 
 ### As an application developer
 
@@ -190,21 +182,30 @@ export enum ErrorCode {
 }
 ```
 
+
+## Available apps
+
+Explore apps that use the `window.ai` API:
+- After installing the extension, visit the Apps tab in its popup.
+
+- [Window.ai Discord #app-showcase channel](https://discord.gg/6kMeRxc2T)
+
+
+## On the horizon
+- [ ] Support additional models
+- [ ] Improve UX
+
+
 ## Setup
 
 There are two setup options:
 1. Install the extension from the [Chrome Web Store](https://chrome.google.com/webstore/chbepdchbogmcmhilpfmijbkfpplgnoh) (recommended)
 2. Build the extension yourself (see [how](#contributing))
 
+
 ### Browser support
 ✅ [Chrome](https://chrome.google.com/webstore/detail/window-ai/cbhbgmdpcoelfdoihppookkijpmgahag) and other Chromium based browsers (e.g., Brave, Edge, etc.)
 
-## Available apps
-
-Explore apps that use the `window.ai` API:
-- [Skylight](https://www.skylightai.io/)
-
-- [Window.ai Discord #app-showcase channel](https://discord.gg/6kMeRxc2T)
 
 ## Contributing
 
@@ -221,10 +222,7 @@ Chrome - `build/chrome-mv3-prod`.
 
 
 ## Disclaimer
-This project is a proof-of-concept utilizing experimental technologies. It is by no means a production-ready implementation, and it should not be used for anything other than research. It's provided "as-is" without any warranty, expressed or implied. By using this software, you agree to assume all risks associated with its use, including but not limited to data loss, system failure, or any other issues that may arise.
-The models supplied as part of this project were not created by, are not owned by, are not affiliated with, and are not endorsed by the author of this project. The author of this project does not claim any ownership of the models, and is not responsible for any issues that may arise from their use. Please be advised that open-source models, particularly uncensored, aren't regulated, and may produce offensive or harmful content.
-Similarly, the applications that utilize `window.ai` are not affiliated with the author of this project. The author of this project does not claim any ownership of the applications, and is not responsible for any issues that may arise from their use. Use at your own risk.
-
+WebextLLM is a proof-of-concept using experimental technologies. It is not recommended for production use and is currently targeted for research purposes. The software is provided "as-is" without any warranty, expressed or implied. By using this software, you agree to assume all risks, including potential data loss, system failure, or other issues that may occur. The models provided in this project are not affiliated with, or endorsed by the project's author. The author does not claim ownership of the models and is not responsible for any issues arising from their use. Please note that open-source models, especially uncensored ones, are not regulated and may generate offensive or harmful content. Similarly, the project's author is not affiliated with the applications utilizing the window.ai API. The author does not claim ownership of the applications and is not liable for any issues arising from their use. Use at your own disclosure.
 
 ## Acknowledgements
 This project utilizes and builds on the incredible work by [web-llm](https://github.com/mlc-ai/web-llm) and [window.ai](https://github.com/alexanderatallah/window.ai)!
