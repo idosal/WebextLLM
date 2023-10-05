@@ -1,6 +1,6 @@
 # WebextLLM - browser-native LLMs at your fingertips
 
-<p align="center"><img height="90%" width="90%" src="https://github.com/idosal/WebextLLM/assets/18148989/e78d6b2c-1625-4658-ae18-966441cf7b6e"</img></p>
+<p align="center"><img height="90%" width="90%" src="https://github.com/idosal/WebextLLM/assets/18148989/bfa061ce-ffa1-4e13-8cf4-ee320285663d"</img></p>
 
 <div align="center">
 
